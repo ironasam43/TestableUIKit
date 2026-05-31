@@ -202,6 +202,72 @@ grep -c "isa = PBXSourcesBuildPhase" TestableUIKitDemo.xcodeproj/project.pbxproj
 
 ---
 
+## M-4 テーマ候補（未着手）
+
+### A: setProperty 拡張
+
+**概要**: 既存 `setProperty` コマンドで新しいプロパティをサポート
+
+**対象プロパティ**:
+- `isHidden` (bool) — UI の表示/非表示制御
+- `alpha` (float 0.0-1.0) — 透明度
+- `backgroundColor` (string) — 背景色（Hex / Named color）
+
+**実装方法**: `CLIDemoLoginButton.perform()` の switch case 拡張（新 key 追加）
+
+**工数**: 0.5〜1 セッション
+
+---
+
+### B: テストランナー統合
+
+**概要**: `run_test.py` を正式な test suite に昇格
+
+**現状**: Python スクリプト（Phase A/B/B-5 の integration テスト）
+
+**対象フレームワーク**:
+- pytest（Python テスト統合）
+- または XCTest（Swift ネイティブ連携）
+
+**CI 組み込み**: `xcodebuild test` に含める、または separate workflow ジョブ
+
+**工数**: 0.5〜1 セッション
+
+---
+
+### C: SwiftUI コンポーネント対応
+
+**概要**: CLI スタブ実装から実 SwiftUI コンポーネントへの移行
+
+**現状**: `CLIDemoLoginButton` は `@MainActor class` の CLI デモ
+
+**目標**: 実 SwiftUI `Button` `Toggle` などを Testable にラップ
+
+**実装パターン**:
+- ViewModifier で AnyTestable プロトコル適用
+- EnvironmentObject で TestableRegistry アクセス
+
+**工数**: 1〜2 セッション（設計変更大）
+
+---
+
+### D: 実機テスト対応
+
+**概要**: iOS Simulator から実 iPhone での対応拡張
+
+**前提条件**:
+- Provisioning Profile セットアップ
+- 実 iPhone の UUID 管理
+- WiFi ネットワーク経由の IPC（localhost:8888 から Wi-Fi に拡張）
+
+**CI 構成**:
+- GitHub Actions に実機接続設定（App Store Connect キー等）
+- または local runner（実機接続マシン）
+
+**工数**: 1〜2 セッション（高コスト）
+
+---
+
 ## References
 
 - `docs/ipc-protocol.md` — HTTP API specification

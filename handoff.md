@@ -346,16 +346,23 @@ curl で HTTP 経由テスト:
 
 ---
 
-## 次セッション以降の候補（M-4 スコープ）
+## M-4 候補（未着手）
 
 ### 優先度高
-- **M-3-1 確定化**：Human による Q1（iOS 最小バージョン）/ Q2（device family）の明示回答
-  - Q1 回答次第で `project.yml` deploymentTarget・`ci.yml` OS バージョンを更新
-- **M-3-4: setProperty コマンド**：`setValue`（generic）または `setEnabled` 以外の property 操作の実装
+- **setProperty 拡張**：isHidden, alpha, backgroundColor など新 property 対応
+  - 既存 `setProperty` の switch case 追加のみ
+  - 工数: 0.5〜1 セッション
 
 ### 優先度中
+- **テストランナー統合**：`run_test.py` を pytest / XCTest 正式スイートに昇格
+  - CI 組み込み（xcodebuild test）
+  - 工数: 0.5〜1 セッション
 - **実機テスト対応**：Simulator から実 iPhone への対象拡張
-- **テストランナー統合**：`run_test.py` を正式な test suite に組み込み（pytest / XCTest 連携）
+  - Provisioning Profile・device UUID 管理
+  - 工数: 1〜2 セッション（高コスト）
 
 ### 優先度低
-- **CI matrix 拡張**：複数 iOS バージョン対応（Q1 が iOS 15 維持の場合は min version job 追加検討）
+- **SwiftUI コンポーネント対応**：CLIDemoLoginButton → SwiftUI View 置き換え
+  - ViewModifier で AnyTestable プロトコル適用
+  - 設計変更大・工数: 1〜2 セッション
+- **CI matrix 拡張**：複数 iOS バージョン対応（iOS 16 以上複数版での並列テスト）
