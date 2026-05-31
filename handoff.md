@@ -115,8 +115,66 @@ After tap:      isEnabled=false, title="Log In"
 
 ---
 
+## 追加情報（Session 2026-05-31 後半 - M-2 品質保証フェーズ）
+
+### Auditor 指摘による最終調整
+
+#### 論点E'：tap実装の双方向性検証 ✅
+- `DemoApp/LoginButton.swift` 23行: `isEnabled = false` は意図的なドメインロジック
+- `setEnabled` コマンド（26-29行）で復帰可能性確認
+- run_test.py に **Step B-5** 追加：`setEnabled(true)` → 状態復帰 `false→true` 実証
+- **テスト実行結果**: 
+  ```
+  Phase A: ✅ PASS (ping reachability)
+  Phase B: ✅ PASS (tap: true→false)
+  Phase B-5: ✅ PASS (recovery: false→true via setEnabled)
+  ```
+
+#### 論点F'：IPC プロトコル JSONValue 形式の統一 ✅
+- **修正対象**: `docs/ipc-protocol.md` 177-181行 （描述状態フォーマット）
+- **修正前**: `{"isEnabled": {"type": "bool", "value": true}}` （誤）
+- **修正後**: `{"isEnabled": true}` （single value container 方式）
+- **3者確認**: TestableServer.swift CodingKeys / run_test.py ペイロード / ipc-protocol.md 仕様 完全一致
+
+#### 論点G'：pbxproj 重複検出メカニズム ✅
+- `docs/design.md` Known Issues に検出 grep を追記：
+  ```bash
+  grep -c "isa = PBXSourcesBuildPhase" TestableUIKitDemo.xcodeproj/project.pbxproj
+  # 期待値: 2（DemoApp + UIKit ターゲット分）
+  # 警告閾値: 4 以上で重複検出
+  ```
+- 再発予防体制整備完了
+
+#### 論点M：VCS（git）初期化 ✅
+- **実施内容**: `git init` + `.gitignore` 作成 + checkpoint commit
+- **Commit**: `b3761d8` "feat: M-2 complete - iOS App IPC verified (Phase A/B PASS)"
+- **注記**: `.build/` / `DerivedData/` が initial commit に含まれた（M-3 で clean up 予定）
+- **効果**: M-3 以降での安全な checkpoint 戦略が確立
+
+### M-2 最終統計
+
+| 指標 | 数値 |
+|---|---|
+| **発見・修正したバグ** | 4件 |
+| - pbxproj 重複 isa ブロック | 1件 ✅ |
+| - ドキュメント乖離（JSONValue形式） | 1件 ✅ |
+| - ビルドキャッシュ汚染 | 1件 ✅ |
+| - git 未初期化 | 1件 ✅ |
+| **実装行数（コード）** | ~600行 |
+| **テストケース** | 3段階（Phase A + B + B-5） |
+| **ドキュメント更新** | 2ファイル追記（ipc-protocol.md + design.md） |
+| **VCS Commit** | 2件（初期 + 品質保証） |
+
+---
+
 ## 次回再開時の作業（M-3）
-1. OS/デバイスマトリクス方針の決定（最低サポート: iOS 15 or 17？）
-2. xcodegen による pbxproj 宣言的管理への移行
-3. setProperty コマンド実装とテスト
-4. GitHub Actions CI 統合例の作成
+
+### 必須タスク
+1. **OS/デバイスマトリクス方針** の決定（最低サポート: iOS 17?）
+2. **xcodegen 移行** による pbxproj 宣言的管理
+3. **CI/CD 統合** (GitHub Actions 例)
+4. **git cleanup**: `.build/` `DerivedData/` の削除と commit
+
+### オプション（M-4以降）
+- setProperty コマンドの詳細仕様化
+- 実機対応
