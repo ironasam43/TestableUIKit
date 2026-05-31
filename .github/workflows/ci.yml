@@ -35,3 +35,41 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             | xcpretty || true
+
+  probe-simulator:
+    name: Phase 0 PoC - Simulator Boot & App Launch
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install xcodegen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        run: xcodegen generate
+      - name: Build DemoApp for install
+        run: |
+          xcodebuild build \
+            -scheme TestableUIKitDemo \
+            -destination "platform=iOS Simulator,name=iPhone 16,OS=18" \
+            CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO \
+            CONFIGURATION_BUILD_DIR=build/
+      - name: Boot Simulator (iPhone 16)
+        run: |
+          xcrun simctl boot "iPhone 16" || true
+          xcrun simctl bootstatus "iPhone 16" -b
+      - name: Install & Launch DemoApp
+        run: |
+          APP=$(find build -name "*.app" | head -1)
+          echo "Installing app: $APP"
+          xcrun simctl install booted "$APP"
+          xcrun simctl launch booted com.testable.TestableUIKitDemo
+      - name: Wait for /ping endpoint (max 60s)
+        run: |
+          for i in $(seq 1 20); do
+            echo "Attempt $i: checking http://localhost:8888/ping"
+            curl -sf http://localhost:8888/ping && exit 0
+            sleep 3
+          done
+          echo "ERROR: /ping endpoint unreachable after 60s" && exit 1
+      - name: Shutdown Simulator
+        if: always()
+        run: xcrun simctl shutdown "iPhone 16" || true
