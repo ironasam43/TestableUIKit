@@ -151,7 +151,7 @@ $ git log --all --full-history -- '.build/' 'DerivedData/'
 ### 完了済み
 - [x] M-3a: xcodegen 移行（pbxproj 宣言的管理）✅
 - [x] M-3-0: git cleanup（.build/DerivedData/ 非追跡確認）✅
-- [x] M-3-1: OS/device matrix 暫定確定（iOS 15.0 維持 / iPhone のみ）✅
+- [x] M-3-1: OS/device matrix 確定（iOS 16.0 / iPhone 16 + iPad Air・2026-05-31 Human 確定）✅
 - [x] M-3-3: CI/CD 統合（GitHub Actions workflow 作成・remote 設定・green PASS）✅
 
 ### 未着手（オプション）
