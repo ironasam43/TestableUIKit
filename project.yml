@@ -1,27 +1,6 @@
 name: TestableUIKitDemo
-options:
-  bundleIdPrefix: com.testable
-  deploymentTarget:
-    iOS: "15.0"
 
 targets:
-  TestableUIKitDemo:
-    type: application
-    platform: iOS
-    deploymentTarget: "15.0"
-    sources:
-      - path: DemoApp
-    dependencies:
-      - target: TestableUIKit
-    settings:
-      PRODUCT_BUNDLE_IDENTIFIER: com.testable.TestableUIKitDemo
-      DEVELOPMENT_TEAM: ""
-      CODE_SIGN_IDENTITY: "-"
-    info:
-      path: DemoApp/Info.plist
-      properties:
-        UILaunchScreen: {}
-
   TestableUIKit:
     type: framework
     platform: iOS
@@ -29,6 +8,36 @@ targets:
     sources:
       - path: Sources/TestableUIKit
     settings:
+      DEFINES_MODULE: YES
+      PRODUCT_MODULE_NAME: TestableUIKit
+      PRODUCT_NAME: TestableUIKit
       PRODUCT_BUNDLE_IDENTIFIER: com.testable.TestableUIKit
-      GENERATE_INFOPLIST_FILE: "YES"
-      SKIP_INSTALL: "YES"
+      SKIP_INSTALL: NO
+      GENERATE_INFOPLIST_FILE: YES
+
+  DemoApp:
+    type: application
+    platform: iOS
+    deploymentTarget: "15.0"
+    sources:
+      - path: DemoApp
+    dependencies:
+      - target: TestableUIKit
+    info:
+      path: DemoApp/Info.plist
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.testable.TestableUIKitDemo
+      DEVELOPMENT_TEAM: ""
+      CODE_SIGN_IDENTITY: ""
+      PROVISIONING_PROFILE: ""
+
+schemes:
+  TestableUIKitDemo:
+    build:
+      targets:
+        TestableUIKit: [build]
+        DemoApp: [build]
+    run:
+      config: Debug
+      targets:
+        - DemoApp

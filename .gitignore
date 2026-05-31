@@ -3,6 +3,7 @@ DerivedData/
 build/
 .build/
 *.xcarchive
+TestableUIKitDemo.xcodeproj/
 
 # Xcode User-Specific Files
 *.xcuserstate
