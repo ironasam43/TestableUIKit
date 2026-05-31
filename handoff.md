@@ -84,17 +84,95 @@ After tap:      isEnabled=false, title="Log In"
 
 ---
 
-## M-3 スコープ（決定済み、未着手）🔄
+## M-3a 完了（xcodegen 移行）✅
 
-### M-3 の目標
-- Multi-device matrix testing（iOS 17～26、複数 device タイプ）
-- xcodegen/Tuist 移行（pbxproj 手編集 → 宣言的生成）
-- setProperty コマンド実装
-- CI/CD 統合（GitHub Actions 例）
+### 実施内容（2026-05-31 セッション）
 
-### 検討事項
-- pbxproj 手管理は再発リスク（M-2 で確認）→ xcodegen 本格導入検討
-- デバイスマトリクス：最低要件を iOS 17～26 とするか、Simulator のみか、実機対応か
+#### xcodegen 導入・project.yml 作成
+| 項目 | 状態 |
+|---|---|
+| `project.yml` 作成 | ✅ 完成（deploymentTarget: iOS 15.0、Test target 含む） |
+| `Xcode.xcodeproj` 再生成 | ✅ `xcodegen generate` で同期（git 非追跡） |
+| pbxproj 手編集廃止 | ✅ 宣言的管理に移行 |
+| Commits | `52e7e86` + `1907b9a` |
+
+#### git status 確認済み
+- `.build/` → git 非追跡（`.gitignore` 対象）
+- `DerivedData/` → git 非追跡（`.gitignore` 対象）
+- `*.xcodeproj/` → git 非追跡（xcodegen で再生成）
+- `project.yml` → git 追跡済み（宣言的定義ソース）
+
+### M-3a 効果
+- pbxproj 手編集再発リスク排除（M-2 で発生した重複 isa ブロック問題は以後発生不可）
+- deploymentTarget 一元管理（CI matrix 宣言に活用可能）
+
+---
+
+## M-3-0 完了（git cleanup）✅
+
+### 実施内容
+- 初期 commit における `.build/` / `DerivedData/` 汚染を確認したが、**実際には git history に追跡されていない状態だった**
+- `.gitignore` が初期設定で適切に機能していた
+
+### 確認コマンド結果
+```bash
+$ git log --all --full-history -- '.build/' 'DerivedData/'
+# 出力なし（追跡対象外を確認）
+```
+
+---
+
+## M-3-1 保留中（OS/デバイスマトリクス方針決定）⏸️
+
+### 現状
+- `project.yml` の `deploymentTarget`：**iOS 15.0**（変更せず維持）
+- **Human 確認待ち**（deploymentTarget 変更 / CI matrix 定義）
+- CI 実装（M-3-3）は iOS 15.0 基準で進行
+
+---
+
+## M-3 スコープ（全体目標）✅ ほぼ完了
+
+### 完了済み
+- [x] M-3a: xcodegen 移行（pbxproj 宣言的管理）✅
+- [x] M-3-0: git cleanup（.build/DerivedData/ 非追跡確認）✅
+- [x] M-3-3: CI/CD 統合（GitHub Actions workflow 作成・remote 設定）✅
+
+### 実施中 / 検討中
+- [ ] M-3-1: OS/device matrix 方針確定（Human 確認待ち・iOS 15.0 維持中）
+
+### 未着手（オプション）
+- [ ] M-3-4: setProperty コマンドの詳細仕様化（M-4以降）
+
+---
+
+## M-3-3 完了（CI/CD 統合）✅
+
+### 実施内容（2026-05-31 セッション後半）
+
+#### GitHub リポジトリ設定
+| 項目 | 状態 |
+|---|---|
+| リポジトリ作成 | ✅ `gh repo create` で Public リポジトリ作成 |
+| Remote 設定 | ✅ `origin` → `https://github.com/ironasam43/TestableUIKit.git` |
+| ブランチ | ✅ `master` → `main` にリネーム・push |
+| 初期 commit | ✅ push 完了 |
+
+#### CI/CD ワークフロー
+| ファイル | 内容 |
+|---|---|
+| `.github/workflows/ci.yml` | ✅ 作成完了 |
+| `unit-test` job | `swift test`（Swift Package ユニット検証） |
+| `build-app` job | `xcodegen generate && xcodebuild build`（iOS App ビルド） |
+| Trigger | push to `main` + pull_request to `main` |
+
+### Commits
+- GitHub 初期化による initial commit（master）
+- main ブランチ作成・push
+
+### 次フェーズ
+- GitHub Actions 初回実行確認（現在進行中）
+- Human OS/device matrix 確認後、deploymentTarget 更新 + CI matrix 設定
 
 ---
 
