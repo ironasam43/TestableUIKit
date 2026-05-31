@@ -199,39 +199,82 @@ def main():
         print("         Expected: isEnabled to change from true to false")
         sys.exit(1)
 
-    # Step B-5: Verify bidirectional state recovery (setEnabled → getState)
-    print("\nStep B-5: Testing bidirectional state recovery via setEnabled...")
-    setEnabled_payload = {
+    # Step B-5: Test setProperty command (new M-3-4 feature)
+    print("\nStep B-5: Testing setProperty command (M-3-4)...")
+    print("  Step B-5a: setProperty(key: 'isEnabled', value: true)")
+
+    setProperty_isEnabled_payload = {
         "testID": "scene.auth.loginButton",
-        "commandName": "setEnabled",
-        "parameters": True
+        "commandName": "setProperty",
+        "parameters": {
+            "key": "isEnabled",
+            "value": True
+        }
     }
 
-    setEnabled_response = send_http_request("POST", "/perform", setEnabled_payload)
+    setProperty_isEnabled_response = send_http_request("POST", "/perform", setProperty_isEnabled_payload)
 
-    if setEnabled_response is None:
-        print("❌ [FAIL] setEnabled command failed!")
+    if setProperty_isEnabled_response is None:
+        print("❌ [FAIL] setProperty(key: 'isEnabled') command failed!")
         sys.exit(1)
 
-    print("✅ setEnabled(true) command executed")
-    print(f"   Response: {json.dumps(setEnabled_response, indent=3)}")
+    print("✅ setProperty command executed")
+    print(f"   Response: {json.dumps(setProperty_isEnabled_response, indent=3)}")
 
     # Verify recovery state
-    recovered_state = send_http_request("POST", "/perform", getstate_payload)
+    recovered_state_1 = send_http_request("POST", "/perform", getstate_payload)
 
-    if recovered_state is None:
+    if recovered_state_1 is None:
         print("❌ [FAIL] Failed to query recovered state!")
         sys.exit(1)
 
-    recovered_isEnabled = recovered_state.get("isEnabled")
-    print(f"\n✅ State recovered after setEnabled(true):")
+    recovered_isEnabled = recovered_state_1.get("isEnabled")
+    print(f"\n✅ State after setProperty(key: 'isEnabled', value: true):")
     print(f"   isEnabled: {final_isEnabled} → {recovered_isEnabled}")
 
     if recovered_isEnabled is True:
-        print("   ✅ [PASS] Bidirectional state recovery verified!")
+        print("   ✅ [PASS] isEnabled state recovery verified!")
     else:
-        print("   ⚠️  [WARN] State did not fully recover (isEnabled != true)")
-        print("      This may indicate a partial implementation of setEnabled")
+        print("   ❌ [FAIL] isEnabled state did not recover")
+        sys.exit(1)
+
+    # Step B-5b: setProperty(key: 'title', value: 'Sign In')
+    print("\n  Step B-5b: setProperty(key: 'title', value: 'Sign In')")
+
+    setProperty_title_payload = {
+        "testID": "scene.auth.loginButton",
+        "commandName": "setProperty",
+        "parameters": {
+            "key": "title",
+            "value": "Sign In"
+        }
+    }
+
+    setProperty_title_response = send_http_request("POST", "/perform", setProperty_title_payload)
+
+    if setProperty_title_response is None:
+        print("❌ [FAIL] setProperty(key: 'title') command failed!")
+        sys.exit(1)
+
+    print("✅ setProperty command executed")
+    print(f"   Response: {json.dumps(setProperty_title_response, indent=3)}")
+
+    # Verify title change
+    recovered_state_2 = send_http_request("POST", "/perform", getstate_payload)
+
+    if recovered_state_2 is None:
+        print("❌ [FAIL] Failed to query final state!")
+        sys.exit(1)
+
+    recovered_title = recovered_state_2.get("title")
+    print(f"\n✅ State after setProperty(key: 'title', value: 'Sign In'):")
+    print(f"   title: '{final_title}' → '{recovered_title}'")
+
+    if recovered_title == "Sign In":
+        print("   ✅ [PASS] title state change verified!")
+    else:
+        print(f"   ❌ [FAIL] title state did not change (expected 'Sign In', got '{recovered_title}')")
+        sys.exit(1)
 
     # ──────────────────────────────────────────────────────────────
     # Summary

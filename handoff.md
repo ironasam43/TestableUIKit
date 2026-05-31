@@ -293,6 +293,59 @@ handoff.md:        ✅ M-3 確定化状況記録済み・push 準備完了
 
 ---
 
+## M-3-4 完了（setProperty コマンド実装）✅
+
+### 実装内容（2026-05-31 セッション）
+
+#### `setProperty` コマンド I/F（汎用案）
+
+```swift
+commandName: "setProperty"
+parameters: {
+  "key": "isEnabled",      // "isEnabled" | "title"
+  "value": true | "text"   // bool | string（key に応じて）
+}
+```
+
+#### 実装対象
+
+- `Sources/TestableUIKit/CLIDemoLoginButton.swift`：汎用 `setProperty` case 追加
+- キー管理：switch 文で拡張可能な設計
+- 型安全性：guard case で厳密な型チェック
+
+#### テスト実装完了
+
+```
+ユニットテスト（CLIDemoLoginButtonTests.swift）:
+  ✅ testSetProperty_isEnabled_true()        - false → true
+  ✅ testSetProperty_isEnabled_false()       - true → false  
+  ✅ testSetProperty_title()                - タイトル変更
+  ✅ testSetProperty_title_empty()          - 空文字列設定
+  ✅ testSetProperty_invalidKey()           - 未知キーエラー
+  ✅ testSetProperty_missingKey()           - キー欠損エラー
+  ✅ testSetProperty_missingValue()         - 値欠損エラー
+  ✅ testSetProperty_isEnabled_wrongType()  - 型不一致エラー
+  ✅ testSetProperty_title_wrongType()      - 型不一致エラー
+  ✅ testSetProperty_notObject()            - オブジェクト型チェック
+  ✅ testTap()                              - tap コマンド回帰テスト
+  
+結果: 17 tests PASS（0 failures）
+```
+
+#### Integration テスト確認
+
+```
+curl で HTTP 経由テスト:
+  ✅ setProperty(key: 'isEnabled', value: true)   → isEnabled: true
+  ✅ setProperty(key: 'title', value: 'Sign In')  → title: 'Sign In'
+```
+
+#### CI green 確認
+
+- GitHub Actions: device matrix（iPhone 16 + iPad Air）で実行予定
+
+---
+
 ## 次セッション以降の候補（M-4 スコープ）
 
 ### 優先度高
