@@ -174,6 +174,21 @@ grep -c "isa = PBXSourcesBuildPhase" TestableUIKitDemo.xcodeproj/project.pbxproj
 
 **Remediation**: Always run `rm -rf DerivedData && xcodebuild ... clean build` after structural changes to pbxproj.
 
+### Issue: TestableUIKit Framework Bundle Identifier Is Placeholder
+
+**Description**: The framework's `PRODUCT_BUNDLE_IDENTIFIER` is currently set to `com.testable.TestableUIKit` (project.yml L14), which is a placeholder assigned for build completion during M-3a xcodegen integration.
+
+**Status**: ⚠️ Placeholder value (not final specification)
+
+**Planned Resolution** (M-4 or distribution phase):
+- Establish framework bundle ID policy (e.g., `com.example.testable-ui-kit` for open-source, company-specific for internal)
+- Align with SPM/CocoaPods distribution requirements
+- Document bundle ID contract in docs/packaging.md
+
+**Current Impact**: 
+- No impact on functionality (framework works correctly with any ID)
+- Only relevant if distributing framework to multiple teams/devices beyond localhost testing
+
 ---
 
 ## Future Enhancements

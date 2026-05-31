@@ -135,21 +135,36 @@ class LoginButton: UIButton, AnyTestable {
 
 ### セットアップ（初回のみ）
 
-1. **SETUP.md に従って iOS App プロジェクト作成**：
+**前提条件**:
+- Xcode 15+
+- xcodegen 2.45.3+ （インストール: `brew install xcodegen`）
+- Python 3.8+
+
+**手順**:
+
+1. **project.yml から xcodeproj を生成**：
    ```bash
-   # プロジェクトディレクトリへ移動
    cd /Users/koba-p/Documents/Dev/projects/TestableUIKit
-   
-   # SETUP.md を読む
-   cat SETUP.md
+   xcodegen generate
    ```
 
-2. **Xcode で DemoApp.swift と LoginButton.swift を追加**
+2. **Simulator で実行**：
+   ```bash
+   xcodebuild \
+     -project TestableUIKitDemo.xcodeproj \
+     -scheme TestableUIKitDemo \
+     -destination 'platform=iOS Simulator,name=iPhone 17 Pro Max' \
+     build
+   ```
 
-3. **Simulator で実行**：
+   または Xcode GUI：
    ```
    Xcode > Product > Run
    ```
+
+**注意**：
+- `TestableUIKitDemo.xcodeproj/` は `.gitignore` で除外されています（自動生成物）
+- `project.yml` が真実のソース。修正がある場合は `project.yml` を編集後 `xcodegen generate` を実行してください
 
 ### テスト実行
 
@@ -180,9 +195,10 @@ All tests completed successfully!
 
 | レイヤー | 技術 | バージョン |
 |---|---|---|
-| **Swift Runtime** | Swift 5.9+ | iOS 14+ |
+| **Swift Runtime** | Swift 5.9+ | iOS 15+ |
 | **HTTP Framework** | 標準ライブラリ（URLSession） | — |
 | **Async/Await** | Swift Concurrency | — |
+| **Build Tool** | xcodegen | 2.45.3+ |
 | **Package Manager** | SPM | — |
 | **Test Framework** | Python 3.8+ | — |
 | **HTTP Client** | curl | — |
