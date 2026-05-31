@@ -1,6 +1,7 @@
 # Xcode Build Artifacts
 DerivedData/
 build/
+.build/
 *.xcarchive
 
 # Xcode User-Specific Files

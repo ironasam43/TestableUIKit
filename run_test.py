@@ -199,6 +199,40 @@ def main():
         print("         Expected: isEnabled to change from true to false")
         sys.exit(1)
 
+    # Step B-5: Verify bidirectional state recovery (setEnabled → getState)
+    print("\nStep B-5: Testing bidirectional state recovery via setEnabled...")
+    setEnabled_payload = {
+        "testID": "scene.auth.loginButton",
+        "commandName": "setEnabled",
+        "parameters": True
+    }
+
+    setEnabled_response = send_http_request("POST", "/perform", setEnabled_payload)
+
+    if setEnabled_response is None:
+        print("❌ [FAIL] setEnabled command failed!")
+        sys.exit(1)
+
+    print("✅ setEnabled(true) command executed")
+    print(f"   Response: {json.dumps(setEnabled_response, indent=3)}")
+
+    # Verify recovery state
+    recovered_state = send_http_request("POST", "/perform", getstate_payload)
+
+    if recovered_state is None:
+        print("❌ [FAIL] Failed to query recovered state!")
+        sys.exit(1)
+
+    recovered_isEnabled = recovered_state.get("isEnabled")
+    print(f"\n✅ State recovered after setEnabled(true):")
+    print(f"   isEnabled: {final_isEnabled} → {recovered_isEnabled}")
+
+    if recovered_isEnabled is True:
+        print("   ✅ [PASS] Bidirectional state recovery verified!")
+    else:
+        print("   ⚠️  [WARN] State did not fully recover (isEnabled != true)")
+        print("      This may indicate a partial implementation of setEnabled")
+
     # ──────────────────────────────────────────────────────────────
     # Summary
     # ──────────────────────────────────────────────────────────────

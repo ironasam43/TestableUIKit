@@ -160,6 +160,14 @@ POST /perform { testID, commandName: "getState" }  → verify change persisted
 - Migrate to xcodegen or Tuist for declarative project generation
 - This eliminates hand-edit risk and provides version-control-friendly YAML/JSON config
 
+**Early Detection**:
+To detect duplicate `isa` blocks before they cause build failures, run:
+```bash
+grep -c "isa = PBXSourcesBuildPhase" TestableUIKitDemo.xcodeproj/project.pbxproj
+```
+**Expected value**: 2 (one per target: DemoApp + TestableUIKit)  
+**Warning threshold**: ≥4 indicates duplication.
+
 ### Issue: DerivedData Cache Stale State
 
 **Description**: After modifying `.swift` files in target membership or changing build settings, Xcode may cache stale compilation state in DerivedData.
