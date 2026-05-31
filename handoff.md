@@ -284,14 +284,16 @@ handoff.md:        ✅ M-3 完了状況記録済み・push 準備完了
 
 ---
 
-## 次回再開時の作業（M-3）
+## 次セッション以降の候補（M-4 スコープ）
 
-### 必須タスク
-1. **OS/デバイスマトリクス方針** の決定（最低サポート: iOS 17?）
-2. **xcodegen 移行** による pbxproj 宣言的管理
-3. **CI/CD 統合** (GitHub Actions 例)
-4. **git cleanup**: `.build/` `DerivedData/` の削除と commit
+### 優先度高
+- **M-3-1 確定化**：Human による Q1（iOS 最小バージョン）/ Q2（device family）の明示回答
+  - Q1 回答次第で `project.yml` deploymentTarget・`ci.yml` OS バージョンを更新
+- **M-3-4: setProperty コマンド**：`setValue`（generic）または `setEnabled` 以外の property 操作の実装
 
-### オプション（M-4以降）
-- setProperty コマンドの詳細仕様化
-- 実機対応
+### 優先度中
+- **実機テスト対応**：Simulator から実 iPhone への対象拡張
+- **テストランナー統合**：`run_test.py` を正式な test suite に組み込み（pytest / XCTest 連携）
+
+### 優先度低
+- **CI matrix 拡張**：複数 iOS バージョン対応（Q1 が iOS 15 維持の場合は min version job 追加検討）
