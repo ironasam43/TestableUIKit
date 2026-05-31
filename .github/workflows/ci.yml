@@ -18,17 +18,20 @@ jobs:
   build-app:
     name: Build iOS DemoApp
     runs-on: macos-latest
+    strategy:
+      matrix:
+        device: [iPhone 16, iPad Air]
     steps:
       - uses: actions/checkout@v4
       - name: Install xcodegen
         run: brew install xcodegen
       - name: Generate Xcode project
         run: xcodegen generate
-      - name: Build DemoApp (Simulator)
+      - name: Build DemoApp (Simulator) - ${{ matrix.device }}
         run: |
           xcodebuild build \
             -scheme TestableUIKitDemo \
-            -destination 'platform=iOS Simulator,name=iPhone 16,OS=18' \
+            -destination "platform=iOS Simulator,name=${{ matrix.device }},OS=18" \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             | xcpretty || true

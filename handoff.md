@@ -122,21 +122,27 @@ $ git log --all --full-history -- '.build/' 'DerivedData/'
 
 ---
 
-## M-3-1 暫定確定（OS/デバイスマトリクス方針決定）✅
+## M-3-1 確定化完了（OS/デバイスマトリクス方針決定）✅
 
-### 方針確定内容（2026-05-31 セッション終了時）
-- **iOS 最小サポートバージョン**：**iOS 15.0 維持**（変更なし）
-- **CI device family**：**iPhone のみ**（シンプル・低コスト）
+### 方針確定内容（2026-05-31 セッション・Human 回答確定版）
+- **iOS 最小サポートバージョン**：**iOS 16.0 に引き上げ**（Q1 B案 採用）
+- **CI device family**：**iPhone 16 + iPad Air**（Q2 B案 採用・複数デバイス対応）
 - **適用対象**：
-  - `project.yml` deploymentTarget（両ターゲット）: iOS 15.0
-  - `.github/workflows/ci.yml` matrix: iPhone 16 / iOS 18 Simulator
-- **暫定扱い**：Human の明示的指示があれば次セッションで上書き可能
+  - `project.yml` deploymentTarget（両ターゲット）: iOS 16.0
+  - `.github/workflows/ci.yml` device matrix: `[iPhone 16, iPad Air]` / iOS 18 Simulator
+- **確定日時**：2026-05-31（本セッション）
+- **決定者**：Human（Q1 B案・Q2 B案 選択）
 
 ### 根拠
-- Human への Q1/Q2 確認は進行中（回答待ち）
-- 暫定仮定として **A案（iOS 15 維持）・A案（iPhone のみ）** を採用
-- 現行 project.yml・ci.yml はこの設定と既に一致済み（変更不要）
-- CI 実装（M-3-3）は iOS 15.0 基準で実施済み・green PASS
+- Human からの明示回答：Q1 = B案（iOS 16）、Q2 = B案（iPhone + iPad）
+- iOS 15 Simulator は GitHub Actions ランナー（macOS 15）で提供不可
+- iOS 16 採用により Swift Concurrency の安定利用 + ランナー互換性を両立
+- 複数デバイス対応により、iPhone / iPad 両プラットフォームの確認をテスト網羅
+
+### 実装内容
+- `project.yml`：deploymentTarget: iOS 15.0 → iOS 16.0（両ターゲット）
+- `ci.yml`：device matrix 導入（iPhone 16・iPad Air の 2 並列ジョブ）
+- CI Status：M-3-3 実装済み・green PASS 維持
 
 ---
 
@@ -182,8 +188,10 @@ $ git log --all --full-history -- '.build/' 'DerivedData/'
 - ✅ `unit-test` job: `swift test` PASS
 - ✅ `build-app` job: `xcodegen generate && xcodebuild build` PASS
 
-### 次フェーズ
-- Human OS/device matrix 確認後、deploymentTarget 更新 + CI matrix 設定（M-3-1 実装時）
+### M-3-1 実装済み（2026-05-31 後続セッション）
+- ✅ `project.yml` deploymentTarget: iOS 15.0 → iOS 16.0
+- ✅ `.github/workflows/ci.yml` device matrix: iPhone 16 + iPad Air に拡張
+- ✅ CI workflow: matrix job で 2 並列実行確認予定
 
 ---
 
@@ -197,21 +205,22 @@ $ git log --all --full-history -- '.build/' 'DerivedData/'
 1. **M-3a（xcodegen 移行）** ✅ 前セッション完了・継続確認
 2. **M-3-0（git cleanup）** ✅ 前セッション完了・継続確認
 3. **M-3-3（CI/CD 統合）** ✅ 前セッション完了・GitHub Actions green PASS 確認
-4. **M-3-1（OS/device matrix）** ✅ 本セッション暫定確定（iOS 15.0 / iPhone のみ）
+4. **M-3-1（OS/device matrix）** ✅ 本セッション確定化完了（iOS 16.0 / iPhone 16 + iPad Air）
 
-### プロジェクト状態（2026-05-31 末時点）
+### プロジェクト状態（2026-05-31 末時点・M-3-1 確定化済み）
 ```
 git remote:        ✅ GitHub `ironasam43/TestableUIKit` Public 設定済み
-project.yml:       ✅ xcodegen 宣言定義・git 追跡済み（deploymentTarget: iOS 15.0）
-.github/workflows/ci.yml: ✅ swift test + build-app job 設定済み
+project.yml:       ✅ xcodegen 宣言定義・git 追跡済み（deploymentTarget: iOS 16.0）
+.github/workflows/ci.yml: ✅ swift test + build-app device matrix job 設定済み（iPhone 16 + iPad Air）
 CI Status:         ✅ GitHub Actions green（swift test PASS / build-app PASS）
+device matrix:     ⏳ matrix 実装待ち（push 後 CI green 확認予定）
 git history:       ✅ クリーン（.build/ / DerivedData/ 未追跡）
-handoff.md:        ✅ M-3 完了状況記録済み・push 準備完了
+handoff.md:        ✅ M-3 確定化状況記録済み・push 準備完了
 ```
 
 ### 次セッションの予定（オプション）
-- **M-3-1 上書き**: Human が明示的に「Q1: iOS 17」「Q2: iPhone+iPad」と指定した場合、project.yml と ci.yml を更新
-- **M-3-4 検討**: setProperty コマンド詳細仕様化（M-4 以降のマイルストーン）
+- **M-3-1 再検討**: 万が一 CI matrix 実行で問題が発見された場合、project.yml と ci.yml を修正
+- **M-3-4 検討**: setProperty コマンド詳細仕様化・I/F 案（案1: 汎用 setProperty / 案2: 個別コマンド）の採用判定（M-4 以降のマイルストーン）
 
 ---
 
