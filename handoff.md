@@ -125,9 +125,12 @@ $ git log --all --full-history -- '.build/' 'DerivedData/'
 ## M-3-1 保留中（OS/デバイスマトリクス方針決定）⏸️
 
 ### 現状
-- `project.yml` の `deploymentTarget`：**iOS 15.0**（変更せず維持）
-- **Human 確認待ち**（deploymentTarget 変更 / CI matrix 定義）
-- CI 実装（M-3-3）は iOS 15.0 基準で進行
+- `project.yml` の `deploymentTarget`：**iOS 15.0**（変更なし）
+- **Human 回答「C」の解釈待ち**
+  - 選択肢として「C案：iOS 17 最新のみ」があったが、回答が単なる確認記号か選択肢指定か不明
+  - 判定が不確実なため、本セッションでは変更を見送り
+  - **次セッション以降で Human 確認後に実装予定**
+- CI 実装（M-3-3）は iOS 15.0 基準で実施済み（green PASS）
 
 ---
 
@@ -142,7 +145,7 @@ $ git log --all --full-history -- '.build/' 'DerivedData/'
 - [ ] M-3-1: OS/device matrix 方針確定（Human 確認待ち・iOS 15.0 維持中）
 
 ### 未着手（オプション）
-- [ ] M-3-4: setProperty コマンドの詳細仕様化（M-4以降）
+- [ ] M-3-4: setProperty コマンドの詳細仕様化（**本セッション着手なし** / M-4以降）
 
 ---
 
@@ -170,9 +173,13 @@ $ git log --all --full-history -- '.build/' 'DerivedData/'
 - GitHub 初期化による initial commit（master）
 - main ブランチ作成・push
 
+### 実行結果
+- ✅ GitHub Actions 初回実行完了（CI green）
+- ✅ `unit-test` job: `swift test` PASS
+- ✅ `build-app` job: `xcodegen generate && xcodebuild build` PASS
+
 ### 次フェーズ
-- GitHub Actions 初回実行確認（現在進行中）
-- Human OS/device matrix 確認後、deploymentTarget 更新 + CI matrix 設定
+- Human OS/device matrix 確認後、deploymentTarget 更新 + CI matrix 設定（M-3-1 実装時）
 
 ---
 
