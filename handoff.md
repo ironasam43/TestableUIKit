@@ -122,27 +122,31 @@ $ git log --all --full-history -- '.build/' 'DerivedData/'
 
 ---
 
-## M-3-1 保留中（OS/デバイスマトリクス方針決定）⏸️
+## M-3-1 暫定確定（OS/デバイスマトリクス方針決定）✅
 
-### 現状
-- `project.yml` の `deploymentTarget`：**iOS 15.0**（変更なし）
-- **Human 回答「C」の解釈待ち**
-  - 選択肢として「C案：iOS 17 最新のみ」があったが、回答が単なる確認記号か選択肢指定か不明
-  - 判定が不確実なため、本セッションでは変更を見送り
-  - **次セッション以降で Human 確認後に実装予定**
-- CI 実装（M-3-3）は iOS 15.0 基準で実施済み（green PASS）
+### 方針確定内容（2026-05-31 セッション終了時）
+- **iOS 最小サポートバージョン**：**iOS 15.0 維持**（変更なし）
+- **CI device family**：**iPhone のみ**（シンプル・低コスト）
+- **適用対象**：
+  - `project.yml` deploymentTarget（両ターゲット）: iOS 15.0
+  - `.github/workflows/ci.yml` matrix: iPhone 16 / iOS 18 Simulator
+- **暫定扱い**：Human の明示的指示があれば次セッションで上書き可能
+
+### 根拠
+- Human への Q1/Q2 確認は進行中（回答待ち）
+- 暫定仮定として **A案（iOS 15 維持）・A案（iPhone のみ）** を採用
+- 現行 project.yml・ci.yml はこの設定と既に一致済み（変更不要）
+- CI 実装（M-3-3）は iOS 15.0 基準で実施済み・green PASS
 
 ---
 
-## M-3 スコープ（全体目標）✅ ほぼ完了
+## M-3 スコープ（全体目標）✅ 完了
 
 ### 完了済み
 - [x] M-3a: xcodegen 移行（pbxproj 宣言的管理）✅
 - [x] M-3-0: git cleanup（.build/DerivedData/ 非追跡確認）✅
-- [x] M-3-3: CI/CD 統合（GitHub Actions workflow 作成・remote 設定）✅
-
-### 実施中 / 検討中
-- [ ] M-3-1: OS/device matrix 方針確定（Human 確認待ち・iOS 15.0 維持中）
+- [x] M-3-1: OS/device matrix 暫定確定（iOS 15.0 維持 / iPhone のみ）✅
+- [x] M-3-3: CI/CD 統合（GitHub Actions workflow 作成・remote 設定・green PASS）✅
 
 ### 未着手（オプション）
 - [ ] M-3-4: setProperty コマンドの詳細仕様化（**本セッション着手なし** / M-4以降）
@@ -180,6 +184,34 @@ $ git log --all --full-history -- '.build/' 'DerivedData/'
 
 ### 次フェーズ
 - Human OS/device matrix 確認後、deploymentTarget 更新 + CI matrix 設定（M-3-1 実装時）
+
+---
+
+## M-3 全体完了宣言 ✅
+
+**セッション**: 2026-05-31 後半（新規セッション）  
+**完了日時**: 2026-05-31  
+**ステータス**: **M-3 コアスコープ完了**
+
+### 実施内容
+1. **M-3a（xcodegen 移行）** ✅ 前セッション完了・継続確認
+2. **M-3-0（git cleanup）** ✅ 前セッション完了・継続確認
+3. **M-3-3（CI/CD 統合）** ✅ 前セッション完了・GitHub Actions green PASS 確認
+4. **M-3-1（OS/device matrix）** ✅ 本セッション暫定確定（iOS 15.0 / iPhone のみ）
+
+### プロジェクト状態（2026-05-31 末時点）
+```
+git remote:        ✅ GitHub `ironasam43/TestableUIKit` Public 設定済み
+project.yml:       ✅ xcodegen 宣言定義・git 追跡済み（deploymentTarget: iOS 15.0）
+.github/workflows/ci.yml: ✅ swift test + build-app job 設定済み
+CI Status:         ✅ GitHub Actions green（swift test PASS / build-app PASS）
+git history:       ✅ クリーン（.build/ / DerivedData/ 未追跡）
+handoff.md:        ✅ M-3 完了状況記録済み・push 準備完了
+```
+
+### 次セッションの予定（オプション）
+- **M-3-1 上書き**: Human が明示的に「Q1: iOS 17」「Q2: iPhone+iPad」と指定した場合、project.yml と ci.yml を更新
+- **M-3-4 検討**: setProperty コマンド詳細仕様化（M-4 以降のマイルストーン）
 
 ---
 
