@@ -1,0 +1,34 @@
+name: TestableUIKitDemo
+options:
+  bundleIdPrefix: com.testable
+  deploymentTarget:
+    iOS: "15.0"
+
+targets:
+  TestableUIKitDemo:
+    type: application
+    platform: iOS
+    deploymentTarget: "15.0"
+    sources:
+      - path: DemoApp
+    dependencies:
+      - target: TestableUIKit
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.testable.TestableUIKitDemo
+      DEVELOPMENT_TEAM: ""
+      CODE_SIGN_IDENTITY: "-"
+    info:
+      path: DemoApp/Info.plist
+      properties:
+        UILaunchScreen: {}
+
+  TestableUIKit:
+    type: framework
+    platform: iOS
+    deploymentTarget: "15.0"
+    sources:
+      - path: Sources/TestableUIKit
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.testable.TestableUIKit
+      GENERATE_INFOPLIST_FILE: "YES"
+      SKIP_INSTALL: "YES"
