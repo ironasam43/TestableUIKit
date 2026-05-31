@@ -4,6 +4,9 @@ public final class CLIDemoLoginButton: AnyTestable, @unchecked Sendable {
   public let testID = "scene.auth.loginButton"
   private var _isEnabled = true
   private var _title = "Log In"
+  private var _isHidden = false
+  private var _alpha: Double = 1.0
+  private var _backgroundColor = "systemBlue"
 
   private let lock = NSLock()
 
@@ -19,7 +22,10 @@ public final class CLIDemoLoginButton: AnyTestable, @unchecked Sendable {
     lock.withLock {
       [
         "isEnabled": .bool(_isEnabled),
-        "title": .string(_title)
+        "title": .string(_title),
+        "isHidden": .bool(_isHidden),
+        "alpha": .double(_alpha),
+        "backgroundColor": .string(_backgroundColor)
       ]
     }
   }
@@ -66,6 +72,21 @@ public final class CLIDemoLoginButton: AnyTestable, @unchecked Sendable {
           throw TestError.invalidParameters
         }
         lock.withLock { _title = text }
+      case "isHidden":
+        guard case .bool(let hidden) = value else {
+          throw TestError.invalidParameters
+        }
+        lock.withLock { _isHidden = hidden }
+      case "alpha":
+        guard case .double(let alphaValue) = value else {
+          throw TestError.invalidParameters
+        }
+        lock.withLock { _alpha = alphaValue }
+      case "backgroundColor":
+        guard case .string(let color) = value else {
+          throw TestError.invalidParameters
+        }
+        lock.withLock { _backgroundColor = color }
       default:
         throw TestError.unknownCommand("setProperty.\(key)")
       }

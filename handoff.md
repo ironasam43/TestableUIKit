@@ -346,6 +346,48 @@ curl で HTTP 経由テスト:
 
 ---
 
+## M-4 完了（setProperty 拡張）✅
+
+### 実装内容（2026-05-31 セッション）
+
+#### 追加 property
+
+- `isHidden` (bool): コンポーネントの表示/非表示
+- `alpha` (double): 透明度（0.0〜1.0）
+- `backgroundColor` (string): 背景色（"systemBlue" など）
+
+#### テスト実装
+
+- ユニットテスト 6 件追加（各 property の正常系 + 境界値 + エラー系）
+  - testSetProperty_isHidden_true() ✅
+  - testSetProperty_isHidden_false() ✅
+  - testSetProperty_alpha_valid() ✅
+  - testSetProperty_alpha_boundary() ✅
+  - testSetProperty_backgroundColor_valid() ✅
+  - testSetProperty_backgroundColor_invalidType() ✅
+- 既存テスト（11 件）+ JSONValue テスト（6 件）との合計 **23 tests PASS**
+
+#### Integration テスト確認
+
+```
+curl で HTTP 経由テスト:
+  ✅ setProperty(key: 'isHidden', value: true)               → isHidden: true
+  ✅ setProperty(key: 'alpha', value: 0.5)                  → alpha: 0.5
+  ✅ setProperty(key: 'backgroundColor', value: 'systemRed') → backgroundColor: 'systemRed'
+```
+
+#### アーキテクチャ改善
+
+- CLIDemoLoginButton.swift：新 property を描述状態に追加
+- setProperty case を拡張可能な設計で実装（switch statement で新 key を追加可能）
+
+#### CI 確認予定
+
+- `swift test`: 23 tests PASS ✅
+- GitHub Actions device matrix（iPhone 16 + iPad Air）: push 後に実行
+
+---
+
 ## M-4 候補（未着手）
 
 ### 優先度高
