@@ -407,3 +407,45 @@ curl で HTTP 経由テスト:
 - **setProperty さらなる拡張**：fontSize, textColor, cornerRadius など UI 装飾 property
 - **マルチコンポーネント統合テスト**：複数 UI コンポーネント間の相互動作テスト
 - **CI matrix 拡張**：複数 iOS バージョン対応（iOS 16 以上複数版での並列テスト）
+
+---
+
+## M-5 実装開始（本セッション）
+
+### Phase 0 PoC 修正作業
+
+✅ **完了**：
+- ci.yml `probe-simulator` job 修正（W-α/W-β 全対応）
+  - Line 77: `--terminate-running-process` フラグ追加
+    - 理由：前回実行の DemoApp プロセスが残存する可能性に対応
+  - Line 83: process check を `launchctl list | grep com.testable.TestableUIKitDemo` に修正
+    - 理由：実行ファイル名は `DemoApp`（target 名）。`ps -ax | grep TestableUIKitDemo` では一致不可。
+    - Bundle ID を持つ `launchctl list` が正確。
+  - Local commit: `5de08ca`
+
+🔄 **PAT scope 解決後の手順**：
+1. GitHub PAT に `workflow` scope を追加（Human 対応）
+2. Executor が `git push` を実行 → GitHub Actions 自動開始
+3. CI 結果を確認：
+   - **PASS**: Phase 0 job 削除（一時 probe-simulator は不要） → Phase 1 着手
+   - **FAIL (同一カテゴリ × 2回)**: 案B（XCTest UITest）へ撤退
+
+🔄 **Phase 1 設計の開始条件**：
+- Phase 0 CI PASS 確認 **必須**
+- `run_test.py` 全行照合に基づく重新設計 **必須**
+- 実 API 仕様確定: `POST /perform` discriminator 形式
+  - `/setProperty` `/state` `/GET state` エンドポイントは存在しない
+  - 実際のコマンドセット：
+    ```
+    GET  /ping
+    POST /perform
+      commandName: "getState" | "tap" | "setProperty"
+      parameters: {key: ..., value: ...}
+    ```
+  - テストは `run_test.py` コマンドセット + `curl` で `localhost:8888/perform` をコール
+
+⚠️ **次セッション開始状態**：
+- Phase 0 job 修正済み（local commit: `5de08ca`）
+- Push 待機中（PAT workflow scope 依存）
+- Phase 0 CI 未実行
+- Phase 1 未着手
