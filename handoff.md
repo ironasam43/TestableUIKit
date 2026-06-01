@@ -423,29 +423,64 @@ curl で HTTP 経由テスト:
     - Bundle ID を持つ `launchctl list` が正確。
   - Local commit: `5de08ca`
 
-🔄 **PAT scope 解決後の手順**：
+### 実 API 仕様確定（request ベース）
+
+`run_test.py` (L104-276) 全行照合に基づく確定内容：
+
+```
+GET  /ping
+  → Response: {"status": "ok"}
+
+POST /perform
+  Request body format:
+    {
+      "testID": "scene.auth.loginButton",
+      "commandName": "getState" | "tap" | "setProperty",
+      "parameters": {} | {"key": string, "value": any}
+    }
+  
+  commandName 別詳細:
+    - "getState"
+      parameters: {}
+      Response: {"isEnabled": bool, "title": string, ...}
+      注記：tap/setProperty の Response schema は run_test.py で assert 未実装
+            Phase 1 設計時に別途確定が必要
+
+    - "tap"
+      parameters: {}
+
+    - "setProperty"
+      parameters: {"key": string, "value": any}
+      対応 key: "isEnabled", "title", "isHidden"（M-4拡張候補）
+```
+
+⚠️ **重要**: `/setProperty` `/state` `/GET state` 単独エンドポイント は存在しない。すべて `POST /perform` で discriminate される。
+
+🔄 **PAT scope 解決後の手順**（**次セッション開始前に対応推奨**）：
 1. GitHub PAT に `workflow` scope を追加（Human 対応）
-2. Executor が `git push` を実行 → GitHub Actions 自動開始
-3. CI 結果を確認：
-   - **PASS**: Phase 0 job 削除（一時 probe-simulator は不要） → Phase 1 着手
+2. 次セッション開始時に Executor が以下の 2 ステップを実行：
+   - **W-4 確認**: `git push --dry-run` で PAT scope を検証（scope 不足ならエラーで停止）
+   - **W-1 確認**: `git log origin/main..HEAD | wc -l` で commit 数を再取得（「16 commits」は陳腐化対象）
+3. scope OK 後、Executor が `git push` を実行 → GitHub Actions 自動開始
+4. CI 結果を確認：
+   - **PASS**: Phase 0 job 削除 → Phase 1 着手
    - **FAIL (同一カテゴリ × 2回)**: 案B（XCTest UITest）へ撤退
 
 🔄 **Phase 1 設計の開始条件**：
 - Phase 0 CI PASS 確認 **必須**
-- `run_test.py` 全行照合に基づく重新設計 **必須**
-- 実 API 仕様確定: `POST /perform` discriminator 形式
-  - `/setProperty` `/state` `/GET state` エンドポイントは存在しない
-  - 実際のコマンドセット：
-    ```
-    GET  /ping
-    POST /perform
-      commandName: "getState" | "tap" | "setProperty"
-      parameters: {key: ..., value: ...}
-    ```
-  - テストは `run_test.py` コマンドセット + `curl` で `localhost:8888/perform` をコール
+- `run_test.py` 全行照合に基づく重設計 **必須**
+- 上記実 API 仕様（request）を反映した pytest 設計
+- **W-2 注記**: tap / setProperty の Response schema は Phase 1 設計時に本格確定（getState のみ現在確定）
 
-⚠️ **次セッション開始状態**：
+⚠️ **本セッション終了時点での状態**：
 - Phase 0 job 修正済み（local commit: `5de08ca`）
-- Push 待機中（PAT workflow scope 依存）
+- handoff.md 更新済み（本ターン commit 予定）
+- Push 待機中（**PAT workflow scope 依存** / **次セッション開始前対応推奨**）
 - Phase 0 CI 未実行
 - Phase 1 未着手
+
+⚠️ **Executor 次ターン作業範囲（W-5）**：
+- ✓ handoff.md の本セッション内容を更新（本ターン）
+- ✗ **push は実行しない**（PAT scope 待機）
+- ✗ **コード変更・新規ファイル作成は一切行わない**
+- ✓ handoff.md 更新後、Planner が `[DONE]` を出してセッション終了
