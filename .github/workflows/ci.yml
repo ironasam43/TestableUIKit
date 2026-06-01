@@ -37,39 +37,65 @@ jobs:
             | xcpretty || true
 
   probe-simulator:
-    name: Phase 0 PoC - Simulator Boot & App Launch
+    name: Phase 0 PoC - Simulator Boot, App Launch & Loopback
     runs-on: macos-latest
+    needs: [build-app]
+
     steps:
       - uses: actions/checkout@v4
+
       - name: Install xcodegen
         run: brew install xcodegen
+
       - name: Generate Xcode project
         run: xcodegen generate
-      - name: Build DemoApp for install
+
+      - name: Build DemoApp (Simulator)
         run: |
+          echo "=== STEP: xcodebuild ==="
           xcodebuild build \
             -scheme TestableUIKitDemo \
-            -destination "platform=iOS Simulator,name=iPhone 16,OS=18" \
+            -destination "platform=iOS Simulator,name=iPhone 16,OS=18.0" \
             CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO \
-            CONFIGURATION_BUILD_DIR=build/
-      - name: Boot Simulator (iPhone 16)
+            CONFIGURATION_BUILD_DIR=build/Build/Products/Debug-iphonesimulator
+
+      - name: Boot Simulator
         run: |
+          echo "=== STEP: simctl boot ==="
           xcrun simctl boot "iPhone 16" || true
-          xcrun simctl bootstatus "iPhone 16" -b
-      - name: Install & Launch DemoApp
+          xcrun simctl bootstatus "iPhone 16" -b --timeout 300
+
+      - name: Install DemoApp
         run: |
-          APP=$(find build -name "*.app" | head -1)
-          echo "Installing app: $APP"
-          xcrun simctl install booted "$APP"
+          echo "=== STEP: simctl install ==="
+          xcrun simctl install booted \
+            build/Build/Products/Debug-iphonesimulator/TestableUIKitDemo.app
+
+      - name: Launch DemoApp with lifecycle log capture
+        run: |
+          echo "=== STEP: simctl launch + lifecycle log ==="
+          xcrun simctl spawn booted log stream \
+            --predicate 'process == "TestableUIKitDemo"' \
+            --timeout 20 > /tmp/demo_log.txt 2>&1 &
+          LOG_PID=$!
           xcrun simctl launch booted com.testable.TestableUIKitDemo
-      - name: Wait for /ping endpoint (max 60s)
+          sleep 3
+          kill $LOG_PID 2>/dev/null || true
+          echo "--- DemoApp lifecycle log ---"
+          cat /tmp/demo_log.txt || true
+
+      - name: Wait for /ping (max 60s)
         run: |
+          echo "=== STEP: loopback ping ==="
           for i in $(seq 1 20); do
-            echo "Attempt $i: checking http://localhost:8888/ping"
-            curl -sf http://localhost:8888/ping && exit 0
+            echo "Attempt $i: http://localhost:8888/ping"
+            curl -sf http://localhost:8888/ping && echo "=== PING OK ===" && exit 0
             sleep 3
           done
-          echo "ERROR: /ping endpoint unreachable after 60s" && exit 1
+          echo "=== TIMEOUT: /ping unreachable ===" && exit 1
+
       - name: Shutdown Simulator
         if: always()
-        run: xcrun simctl shutdown "iPhone 16" || true
+        run: |
+          echo "=== STEP: cleanup ==="
+          xcrun simctl shutdown "iPhone 16" || true
