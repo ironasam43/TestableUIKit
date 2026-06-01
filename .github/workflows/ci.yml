@@ -74,13 +74,13 @@ jobs:
       - name: Launch DemoApp
         run: |
           echo "=== STEP: simctl launch ==="
-          xcrun simctl launch booted com.testable.TestableUIKitDemo
+          xcrun simctl launch --terminate-running-process booted com.testable.TestableUIKitDemo
           sleep 5
 
       - name: Check process is running (lifecycle indicator)
         run: |
           echo "=== STEP: process check ==="
-          xcrun simctl spawn booted ps -ax | grep -i TestableUIKitDemo \
+          xcrun simctl spawn booted launchctl list | grep -i com.testable.TestableUIKitDemo \
             && echo "=== PROCESS FOUND ===" \
             || echo "=== WARNING: process not found ==="
 
