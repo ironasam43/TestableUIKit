@@ -46,3 +46,6 @@ venv/
 .pd_backup.md
 .pd_messages.md
 handoff_1.md
+
+# Symlink to workspace-root cmflow (breaks on standalone clone)
+docs/cmflow.md
