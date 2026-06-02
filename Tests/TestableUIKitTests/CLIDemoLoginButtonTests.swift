@@ -1,6 +1,5 @@
 import XCTest
 import TestableUIKit
-@testable import TestableUIKitDemo
 
 final class CLIDemoLoginButtonTests: XCTestCase {
   private var button: CLIDemoLoginButton!
