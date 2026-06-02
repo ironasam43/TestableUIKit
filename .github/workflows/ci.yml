@@ -59,11 +59,11 @@ jobs:
       - name: Boot Simulator (get first available device)
         run: |
           echo "=== STEP: simctl boot ==="
-          DEVICE=$(xcrun simctl list devices available -j | jq -r '.devices[][] | select(.state == "Shutdown") | .name' | head -1)
+          DEVICE=$(xcrun simctl list devices available -j | jq -r '.devices[][] | select(.name | startswith("iPhone")) | .udid' | head -1)
           echo "Booting device: $DEVICE"
-          echo "DEVICE_NAME=$DEVICE" >> $GITHUB_ENV
+          echo "DEVICE_UDID=$DEVICE" >> $GITHUB_ENV
           xcrun simctl boot "$DEVICE" || true
-          xcrun simctl bootstatus "$DEVICE" -b --timeout 300
+          xcrun simctl bootstatus "$DEVICE" -b
 
       - name: Install DemoApp
         run: |
@@ -98,4 +98,4 @@ jobs:
         if: always()
         run: |
           echo "=== STEP: cleanup ==="
-          xcrun simctl shutdown "${{ env.DEVICE_NAME }}" || true
+          xcrun simctl shutdown "${{ env.DEVICE_UDID }}" || true
