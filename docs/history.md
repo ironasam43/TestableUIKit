@@ -11,4 +11,5 @@
 - **M-3-1 OS/device matrix 確定** ✅: iOS 16.0 / device matrix = iPhone 16 + iPad Air（Human 確定）。
 - **M-3-3 CI/CD 統合** ✅: GitHub Actions workflow 作成・green PASS。
 - **M-4 setProperty 拡張** ✅: isEnabled/title に加え isHidden/alpha/backgroundColor 追加。合計 23 tests PASS。
-- **M-5 テストランナー統合（進行中）**: Phase 0 PoC（probe-simulator job）修正済み（commit 5de08ca）。実 API 仕様を run_test.py 全行照合で確定（GET /ping, POST /perform で discriminate）。**push 待機中（PAT workflow scope 依存）／ Phase 0 CI 未実行／ Phase 1 未着手。**
+- **M-5 テストランナー統合（進行中）**: Phase 0 PoC（probe-simulator job）修正完了（commit 5de08ca + 0f23586：iPhone UDID 選択 / bootstatus オプション修正）。CI push → **全3ジョブ ✅ PASS**（Swift Package Unit Tests / Build iOS DemoApp / Phase 0 PoC Simulator Boot App Launch & Loopback）。実 API 仕様を run_test.py 全行照合で確定（GET /ping, POST /perform で discriminate）。Phase 1 着手待機中。
+- **M-5+ 実用化ロードマップ確定** ✅: `docs/roadmap.md` を新規作成。実用化の定義・現在地（到達済み）・STEP 1-4（テストランナー昇格→SwiftUI対応→DX整備→実機対応）・推奨ルート（手戻り最小）を明文化。STEP 1/2/4 は既存設計書 B/C/D に1対1対応、STEP 3 は新規カテゴリ。
