@@ -293,4 +293,120 @@ final class CLIDemoLoginButtonTests: XCTestCase {
     XCTAssertFalse(button.isEnabled)
     XCTAssertEqual(result["isEnabled"], .bool(false))
   }
+
+  func testTap_changesTitle_toLoggedIn() async throws {
+    // 定義A実証: tap で title が "Log In" → "Logged In" に変化すること（@Published 再描画の証拠）
+    XCTAssertEqual(button.title, "Log In")
+
+    let result = try await button.perform(commandName: "tap", parameters: .null)
+
+    XCTAssertFalse(button.isEnabled)
+    XCTAssertEqual(button.title, "Logged In")
+    XCTAssertEqual(result["title"], .string("Logged In"))
+  }
+
+  func testTap_whenDisabled_isNoOp() async throws {
+    // 決定1（IPC tap 意味論）: 無効状態での tap は no-op（実ユーザー同様に弾く）
+    _ = try await button.perform(commandName: "setEnabled", parameters: .bool(false))
+    XCTAssertFalse(button.isEnabled)
+    XCTAssertEqual(button.title, "Log In")  // title はまだ変化していない
+
+    // tap を叩いても状態不変
+    let result = try await button.perform(commandName: "tap", parameters: .null)
+
+    XCTAssertFalse(button.isEnabled)         // isEnabled は変わらない
+    XCTAssertEqual(button.title, "Log In")   // title も変わらない
+    XCTAssertEqual(result["isEnabled"], .bool(false))
+    XCTAssertEqual(result["title"], .string("Log In"))
+  }
+
+  // MARK: - getState command
+
+  func testGetState_returnsCurrentState() async throws {
+    // Initial state
+    let result = try await button.perform(commandName: "getState", parameters: .null)
+
+    XCTAssertEqual(result["isEnabled"], .bool(true))
+    XCTAssertEqual(result["title"], .string("Log In"))
+    XCTAssertEqual(result["isHidden"], .bool(false))
+    XCTAssertEqual(result["alpha"], .double(1.0))
+    XCTAssertEqual(result["backgroundColor"], .string("systemBlue"))
+  }
+
+  func testGetState_afterTap_reflectsChange() async throws {
+    // tap でアクション実行後、getState が最新状態を返すこと
+    _ = try await button.perform(commandName: "tap", parameters: .null)
+    let result = try await button.perform(commandName: "getState", parameters: .null)
+
+    XCTAssertEqual(result["isEnabled"], .bool(false))
+    XCTAssertEqual(result["title"], .string("Logged In"))  // 新意味論: tap で "Logged In" に変化
+  }
+
+  func testGetState_hasAllFiveKeys() async throws {
+    // describedState が5キー揃っていること
+    let result = try await button.perform(commandName: "getState", parameters: .null)
+
+    XCTAssertNotNil(result["isEnabled"])
+    XCTAssertNotNil(result["title"])
+    XCTAssertNotNil(result["isHidden"])
+    XCTAssertNotNil(result["alpha"])
+    XCTAssertNotNil(result["backgroundColor"])
+    XCTAssertEqual(result.count, 5)
+  }
+
+  // MARK: - setEnabled command
+
+  func testSetEnabled_false() async throws {
+    // 初期 isEnabled = true → setEnabled(false) → false になること
+    XCTAssertTrue(button.isEnabled)
+
+    let result = try await button.perform(commandName: "setEnabled", parameters: .bool(false))
+
+    XCTAssertFalse(button.isEnabled)
+    XCTAssertEqual(result["isEnabled"], .bool(false))
+  }
+
+  func testSetEnabled_restoreAfterTap() async throws {
+    // tap で false になった後、setEnabled(true) で true に復帰すること
+    _ = try await button.perform(commandName: "tap", parameters: .null)
+    XCTAssertFalse(button.isEnabled)
+
+    let result = try await button.perform(commandName: "setEnabled", parameters: .bool(true))
+
+    XCTAssertTrue(button.isEnabled)
+    XCTAssertEqual(result["isEnabled"], .bool(true))
+  }
+
+  func testSetEnabled_invalidParameters_throwsError() async throws {
+    // bool 以外のパラメータは invalidParameters エラーになること
+    do {
+      _ = try await button.perform(commandName: "setEnabled", parameters: .string("true"))
+      XCTFail("Expected TestError.invalidParameters to be thrown")
+    } catch TestError.invalidParameters {
+      // Expected
+    }
+  }
+
+  // MARK: - describedState 5キー parity
+
+  func testDescribedState_hasFiveKeys() {
+    let state = button.describedState
+
+    XCTAssertEqual(state.count, 5)
+    XCTAssertNotNil(state["isEnabled"])
+    XCTAssertNotNil(state["title"])
+    XCTAssertNotNil(state["isHidden"])
+    XCTAssertNotNil(state["alpha"])
+    XCTAssertNotNil(state["backgroundColor"])
+  }
+
+  func testDescribedState_initialValues() {
+    let state = button.describedState
+
+    XCTAssertEqual(state["isEnabled"], .bool(true))
+    XCTAssertEqual(state["title"], .string("Log In"))
+    XCTAssertEqual(state["isHidden"], .bool(false))
+    XCTAssertEqual(state["alpha"], .double(1.0))
+    XCTAssertEqual(state["backgroundColor"], .string("systemBlue"))
+  }
 }

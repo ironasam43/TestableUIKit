@@ -41,3 +41,8 @@ venv/
 # Temporary files
 *.tmp
 *.log
+
+# ProjectDeck work files
+.pd_backup.md
+.pd_messages.md
+handoff_1.md

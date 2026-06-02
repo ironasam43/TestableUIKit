@@ -97,11 +97,39 @@ case "getState":
 **目的**: ボタン等のタップアクション実行  
 **パラメータ**: なし
 
+**意味論（S2 確定版）**:
+- `isEnabled == false` の場合は **no-op**（実ユーザー同様に弾く）
+- 有効時: `isEnabled = false`（二重送信防止）、`title = "Logged In"`（ログイン遷移の結果）
+
 **実装例** (LoginButton):
 ```swift
 case "tap":
-  isEnabled = false  // tap 後の状態変化
+  var state = _state
+  applyTap(to: &state)   // guard isEnabled; isEnabled=false; title="Logged In"
+  _state = state
   return describedState
+```
+
+**tap レスポンス例**（有効時）:
+```json
+{
+  "isEnabled": false,
+  "title": "Logged In",
+  "isHidden": false,
+  "alpha": 1.0,
+  "backgroundColor": "systemBlue"
+}
+```
+
+**tap レスポンス例**（無効時 / no-op）:
+```json
+{
+  "isEnabled": false,
+  "title": "Log In",
+  "isHidden": false,
+  "alpha": 1.0,
+  "backgroundColor": "systemBlue"
+}
 ```
 
 ---
@@ -109,16 +137,40 @@ case "tap":
 ### setProperty
 
 **目的**: プロパティ値を設定  
-**パラメータ**: `{"propertyName": "string", "value": <value>}`
+**パラメータ**: `{"key": "string", "value": <value>}`
+
+**サポートキー（LoginButton）**:
+
+| key | 型 | 説明 |
+|---|---|---|
+| `isEnabled` | bool | 有効/無効 |
+| `title` | string | ボタンラベル |
+| `isHidden` | bool | 表示/非表示 |
+| `alpha` | double | 透明度（0.0〜1.0） |
+| `backgroundColor` | string | 背景色名（例: "systemBlue"） |
 
 **実装例**:
 ```swift
 case "setProperty":
-  if let dict = parameters.dictionaryValue,
-     let propName = dict["propertyName"]?.stringValue,
-     let value = dict["value"] {
-    // 該当プロパティを value に設定
-  }
+  var state = _state
+  try applySetProperty(to: &state, parameters: parameters)
+  _state = state
+  return describedState
+```
+
+---
+
+### setEnabled
+
+**目的**: isEnabled を直接設定（bool パラメータ）  
+**パラメータ**: `true` または `false`（JSONValue.bool）
+
+**実装例**:
+```swift
+case "setEnabled":
+  var state = _state
+  try applySetEnabled(to: &state, parameters: parameters)
+  _state = state
   return describedState
 ```
 
@@ -154,7 +206,7 @@ public enum JSONValue: Codable {
   "testID": "scene.auth.loginButton",
   "commandName": "setProperty",
   "parameters": {
-    "propertyName": "isEnabled",
+    "key": "isEnabled",
     "value": true
   }
 }
@@ -168,19 +220,19 @@ public enum JSONValue: Codable {
 
 ```swift
 var describedState: [String: JSONValue] {
-  [
-    "isEnabled": .bool(isEnabled),
-    "title": .string(title)
-  ]
+  makeLoginButtonDescribedState(_state)
 }
 ```
 
-レスポンスは以下の形式で JSON 化（single value container 方式）：
+LoginButton（CLI・SwiftUI 共通）の describedState は **5キー固定**：
 
 ```json
 {
   "isEnabled": true,
-  "title": "Log In"
+  "title": "Log In",
+  "isHidden": false,
+  "alpha": 1.0,
+  "backgroundColor": "systemBlue"
 }
 ```
 
@@ -218,11 +270,15 @@ TestableUIKit の検証は以下の3段階フェーズで実施：
 ### Phase B: Logic Verification (UI State Change)
 **目的**: UI コンポーネントの状態変化を実証  
 **手順**:
-1. `/perform` で `getState` コマンド → 初期状態を取得（例: `isEnabled: true`）
-2. `/perform` で `tap` コマンド → 状態変化を実行（例: `isEnabled → false`）
+1. `/perform` で `getState` コマンド → 初期状態を取得（`isEnabled: true, title: "Log In"`）
+2. `/perform` で `tap` コマンド → ログイン遷移を実行
 3. `/perform` で `getState` コマンド → 最終状態を取得し、変化を確認
 
-**期待**: `isEnabled: true → false` の状態遷移が確認される
+**期待**: 以下の状態遷移が確認される
+- `isEnabled: true → false`
+- `title: "Log In" → "Logged In"`
+
+**Phase B 実証の意義**: IPC tap → `@Published` 変化（`title` の変化が再描画の証拠）→ SwiftUI 再描画 の全経路を 1 本で通す。
 
 ### Phase B-5: Bidirectional Recovery
 **目的**: UI 状態の双方向制御と復帰可能性を実証  
@@ -246,6 +302,7 @@ TestableUIKit の検証は以下の3段階フェーズで実施：
 - [x] Phase A (Network) verification
 - [x] Phase B (State Change) verification
 - [x] Phase B-5 (Bidirectional Recovery) verification
-- [ ] setProperty command (future)
+- [x] setProperty command (getState/tap/setProperty/setEnabled 統一 I/F、5キー describedState)
+- [x] tap semantics finalized (S2: guard isEnabled / isEnabled=false / title="Logged In"、5キー固定維持)
 - [ ] Integration with CI/CD test frameworks (future)
 

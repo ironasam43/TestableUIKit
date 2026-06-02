@@ -63,14 +63,15 @@ final class TestableRegistry {
 TestableUIKit/
 ├── Sources/
 │   ├── TestableUIKit/                 # Framework target
-│   │   ├── AnyTestable.swift         # Protocol definition
+│   │   ├── AnyTestable.swift         # Protocol / Registry / TestError 定義
 │   │   ├── JSONValue.swift           # Wire format enum
 │   │   ├── TestableServer.swift      # HTTP server + PerformRequest
-│   │   └── (implicit TestableRegistry, TestError from AnyTestable.swift)
-│   └── (no LoginButton here)
+│   │   └── LoginButtonCore.swift     # 共有状態 struct + 純粋コマンド処理関数（CLI・SwiftUI 共用）
+│   └── TestableUIKitDemo/
+│       └── main.swift                # CLI executable エントリポイント
 ├── DemoApp/
-│   ├── DemoApp.swift                 # App entry point
-│   ├── LoginButton.swift             # Reference component (AnyTestable impl)
+│   ├── DemoApp.swift                 # iOS App エントリポイント
+│   ├── LoginButton.swift             # SwiftUI 版 AnyTestable（@MainActor/@Published）
 │   └── Info.plist
 ├── TestableUIKitDemo.xcodeproj/      # Single xcodeproj for both targets
 ├── docs/
@@ -94,6 +95,18 @@ TestableUIKit/
 
 ## State Change Semantics
 
+全コマンドは実行後の `[String: JSONValue]` を返す（5キー固定）。
+コマンドロジックは `LoginButtonCore.swift` の純粋関数に集約され、CLI・SwiftUI 双方で共有される。
+
+### 統一コマンド表（getState / tap / setProperty / setEnabled）
+
+| コマンド | parameters | 副作用 | CLI | iOS(SwiftUI) |
+|---|---|---|---|---|
+| `getState` | なし | なし | ✅ | ✅ |
+| `tap` | なし | guard isEnabled（無効なら no-op）; isEnabled=false; title="Logged In" | ✅ | ✅ |
+| `setProperty` | `{"key": string, "value": <value>}` | 指定プロパティを更新 | ✅ | ✅ |
+| `setEnabled` | bool | isEnabled を直接設定 | ✅ | ✅ |
+
 ### getState (Query)
 
 Returns current state **without side effects**.
@@ -109,7 +122,37 @@ Executes action and returns resulting state.
 
 ```swift
 case "tap":
-  isEnabled = false    // side effect
+  var state = _state
+  applyTap(to: &state)   // LoginButtonCore の純粋関数（guard isEnabled; isEnabled=false; title="Logged In"）
+  _state = state
+  return describedState
+```
+
+**tap 意味論（S2 確定版）**:
+- `guard state.isEnabled else { return }` — 無効なら no-op（実ユーザー同様に弾く）
+- `state.isEnabled = false` — 二重送信防止
+- `state.title = "Logged In"` — 可視なログイン結果（`@Published` 再描画の証拠）
+
+IPC `perform` は常にモデルへ到達（内省の前提＝常にコンポーネントを駆動できる）。  
+意味論ゲートはビュー層の `.disabled()` ではなくモデル側 `applyTap` が保持する。
+
+### setProperty (Setter)
+
+```swift
+case "setProperty":
+  var state = _state
+  try applySetProperty(to: &state, parameters: parameters)
+  _state = state
+  return describedState
+```
+
+### setEnabled (Quick Toggle)
+
+```swift
+case "setEnabled":
+  var state = _state
+  try applySetEnabled(to: &state, parameters: parameters)
+  _state = state
   return describedState
 ```
 
@@ -118,6 +161,32 @@ case "tap":
 ---
 
 ## Testing Philosophy
+
+### 定義A vs 定義B — in-process 内省テスト vs XCUITest
+
+#### 定義A（in-process 内省テスト / TestableUIKit の背骨）
+
+```
+IPC /perform tap
+  → TestableServer（background queue）
+  → Task { @MainActor in await perform("tap") }
+  → applyTap（LoginButtonCore 純粋関数）
+  → @Published 状態変化（isEnabled=false / title="Logged In"）
+  → SwiftUI 再描画
+```
+
+- **合流点は `perform` 一本**。CLI・SwiftUI の両実装がこの1点で合流する。
+- IPC は `.disabled()` ビューゲートを**通らない**（モデル直叩き）。
+- 意味論ゲート（guard isEnabled）は `applyTap` 内部（モデル側）に持たせる。
+- バックグラウンド由来の `@Published` 変更は `Task { @MainActor in }` ホップで SwiftUI 再描画に正しく載る。
+
+#### 定義B（XCUITest / UIKit sendActions）
+
+- ユーザー入力イベント → UIKit/SwiftUI ビュー層 → `.disabled()` チェック → アクションハンドラ
+- TestableUIKit の領域外。XCUITest が担う。
+- 両者の棲み分け：定義A はコンポーネントの**内部状態**を直接検証、定義B は**ユーザー体験（ビュー層ゲート含む）**を検証。
+
+---
 
 ### Phase A: Network Path Verification
 
@@ -130,10 +199,13 @@ GET /ping → {"status": "ok"}
 
 Ensures UI state responds to commands:
 ```bash
-POST /perform { testID, commandName: "getState" }  → initial state
-POST /perform { testID, commandName: "tap" }       → state after action
-POST /perform { testID, commandName: "getState" }  → verify change persisted
+POST /perform { testID, commandName: "getState" }  → 初期状態（isEnabled:true, title:"Log In"）
+POST /perform { testID, commandName: "tap" }       → 状態変化（isEnabled:false, title:"Logged In"）
+POST /perform { testID, commandName: "getState" }  → 変化の確認（isEnabled:false, title:"Logged In" が持続）
 ```
+
+**Phase B 実証の意義**: IPC tap → `@Published` 変化 → SwiftUI 再描画の全経路を 1 本で通す。  
+`title` の変化（"Log In" → "Logged In"）が再描画の最も明瞭な証拠となる。
 
 ---
 
@@ -195,27 +267,24 @@ grep -c "isa = PBXSourcesBuildPhase" TestableUIKitDemo.xcodeproj/project.pbxproj
 
 - [ ] **M-3**: Multi-device matrix testing (iOS 17–26 simulator variants)
 - [ ] **M-3**: xcodegen migration for pbxproj maintenance
-- [ ] **M-4**: setProperty command for dynamic state manipulation
+- [x] **M-5 Step 0**: コンポーネント2系統分裂解消（getState/tap/setProperty/setEnabled 統一 I/F・5キー describedState・LoginButtonCore DRY 抽出）
+- [x] **S2**: 定義A確定・最小実証（applyTap ログイン風遷移・合流点 perform 一本・XCUITest 棲み分け docs 記録）
+- [ ] **M-5**: run_test.py Phase B を CLI executable で完走（Simulator 検証）
 - [ ] **M-4**: CI/CD integration (GitHub Actions, GitLab CI examples)
 - [ ] **Beyond**: Real device support (not just Simulator)
 - [ ] **Beyond**: Async/await test composition helpers
 
 ---
 
-## M-4 テーマ候補（未着手）
+## M-4 テーマ候補（M-5 Step 0 で一部完了）
 
-### A: setProperty 拡張
+### A: setProperty 拡張 ✅（M-5 Step 0 で実装済み）
 
-**概要**: 既存 `setProperty` コマンドで新しいプロパティをサポート
+**概要**: `setProperty` コマンドで isHidden / alpha / backgroundColor を含む5プロパティをサポート
 
-**対象プロパティ**:
-- `isHidden` (bool) — UI の表示/非表示制御
-- `alpha` (float 0.0-1.0) — 透明度
-- `backgroundColor` (string) — 背景色（Hex / Named color）
+**実装**: `LoginButtonCore.swift` の `applySetProperty` で対応済み。CLI・SwiftUI 共通。
 
-**実装方法**: `CLIDemoLoginButton.perform()` の switch case 拡張（新 key 追加）
-
-**工数**: 0.5〜1 セッション
+**工数**: 実施済み
 
 ---
 
