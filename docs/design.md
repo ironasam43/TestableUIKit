@@ -19,7 +19,7 @@ TestableUIKit is a framework for automating iOS UI testing via HTTP-based IPC pr
 Each UI component that participates in testing must conform to `AnyTestable`:
 
 ```swift
-protocol AnyTestable: Actor {
+protocol AnyTestable: AnyObject, Sendable {
   var testID: String { get }
   var describedState: [String: JSONValue] { get }
   func perform(commandName: String, parameters: JSONValue) async throws -> [String: JSONValue]
@@ -45,8 +45,7 @@ See `docs/ipc-protocol.md` for endpoint specifications.
 Central store for all `AnyTestable` components, keyed by testID.
 
 ```swift
-@MainActor
-final class TestableRegistry {
+actor TestableRegistry {
   static let shared = TestableRegistry()
   func register(_ testable: AnyTestable)
   func find(id: String) -> AnyTestable?

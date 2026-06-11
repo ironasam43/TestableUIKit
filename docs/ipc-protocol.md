@@ -37,10 +37,16 @@ TestableUIKit の iOS アプリ ↔ Host PC 間通信は、REST API over HTTP �
 ```
 
 **レスポンス** (success):
+
+> **全コマンド共通**: 成功時は常に以下の **5キー固定の describedState** を返します。
+
 ```json
 {
-  "<fieldName1>": <value1>,
-  "<fieldName2>": <value2>
+  "isEnabled": <bool>,
+  "title": <string>,
+  "isHidden": <bool>,
+  "alpha": <number>,
+  "backgroundColor": <string>
 }
 ```
 
@@ -84,6 +90,17 @@ final class LoginButton: ObservableObject, AnyTestable {
 **目的**: コンポーネントの現在の状態をスナップショット取得（副作用なし）  
 **パラメータ**: なし
 
+**Response schema**:
+```json
+{
+  "isEnabled": <bool>,
+  "title": <string>,
+  "isHidden": <bool>,
+  "alpha": <number>,
+  "backgroundColor": <string>
+}
+```
+
 **実装例**:
 ```swift
 case "getState":
@@ -100,6 +117,17 @@ case "getState":
 **意味論（S2 確定版）**:
 - `isEnabled == false` の場合は **no-op**（実ユーザー同様に弾く）
 - 有効時: `isEnabled = false`（二重送信防止）、`title = "Logged In"`（ログイン遷移の結果）
+
+**Response schema**:
+```json
+{
+  "isEnabled": <bool>,
+  "title": <string>,
+  "isHidden": <bool>,
+  "alpha": <number>,
+  "backgroundColor": <string>
+}
+```
 
 **実装例** (LoginButton):
 ```swift
@@ -149,6 +177,17 @@ case "tap":
 | `alpha` | double | 透明度（0.0〜1.0） |
 | `backgroundColor` | string | 背景色名（例: "systemBlue"） |
 
+**Response schema**:
+```json
+{
+  "isEnabled": <bool>,
+  "title": <string>,
+  "isHidden": <bool>,
+  "alpha": <number>,
+  "backgroundColor": <string>
+}
+```
+
 **実装例**:
 ```swift
 case "setProperty":
@@ -164,6 +203,17 @@ case "setProperty":
 
 **目的**: isEnabled を直接設定（bool パラメータ）  
 **パラメータ**: `true` または `false`（JSONValue.bool）
+
+**Response schema**:
+```json
+{
+  "isEnabled": <bool>,
+  "title": <string>,
+  "isHidden": <bool>,
+  "alpha": <number>,
+  "backgroundColor": <string>
+}
+```
 
 **実装例**:
 ```swift
@@ -304,5 +354,6 @@ TestableUIKit の検証は以下の3段階フェーズで実施：
 - [x] Phase B-5 (Bidirectional Recovery) verification
 - [x] setProperty command (getState/tap/setProperty/setEnabled 統一 I/F、5キー describedState)
 - [x] tap semantics finalized (S2: guard isEnabled / isEnabled=false / title="Logged In"、5キー固定維持)
-- [ ] Integration with CI/CD test frameworks (future)
+- [x] 全コマンド共通 Response schema 明文化（describedState 5キー固定）
+- [x] Integration with CI/CD via pytest (STEP 1)
 
