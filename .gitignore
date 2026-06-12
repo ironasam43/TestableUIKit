@@ -52,3 +52,4 @@ docs/cmflow.md
 
 # セッション添付（コミット対象外）
 .agent_attachments/
+.venv/

@@ -88,12 +88,12 @@ jobs:
           echo "=== TIMEOUT: /ping unreachable ===" && exit 1
 
       - name: Install pytest dependencies
-        run: pip3 install pytest requests
+        run: python3 -m venv .venv && .venv/bin/pip install pytest requests
 
       - name: Run pytest IPC tests
         run: |
           echo "=== STEP: pytest ==="
-          pytest Tests/test_ipc.py -v
+          .venv/bin/pytest Tests/test_ipc.py -v
 
       - name: Shutdown Simulator
         if: always()
