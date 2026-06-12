@@ -37,7 +37,14 @@ public final class TestableServer: @unchecked Sendable {
   }
 
   private func receive(from connection: NWConnection) {
-    connection.receive(minimumIncompleteLength: 1, maximumLength: 65536) { [weak self] data, _, _, error in
+    receive(connection: connection, accumulated: Data())
+  }
+
+  /// NWConnection.receive は部分受信（HTTP ヘッダーとボディが別 TCP セグメントで届く）で
+  /// 即コールバック発火するため、ヘッダー終端 `\r\n\r\n` 未到達、または
+  /// Content-Length 分のボディ未到達なら再帰的に receive を呼んで完全なリクエストを蓄積する。
+  private func receive(connection: NWConnection, accumulated: Data) {
+    connection.receive(minimumIncompleteLength: 1, maximumLength: 65536) { [weak self] data, _, isComplete, error in
       guard let self else { connection.cancel(); return }
 
       if error != nil {
@@ -45,19 +52,58 @@ public final class TestableServer: @unchecked Sendable {
         return
       }
 
-      guard let data else {
-        connection.cancel()
+      var buffer = accumulated
+      if let data, !data.isEmpty {
+        buffer.append(data)
+      }
+
+      // ヘッダー終端未到達なら継続受信
+      guard let sepRange = buffer.range(of: Self.headerSeparator) else {
+        if isComplete || buffer.count >= 65536 {
+          connection.cancel()
+          return
+        }
+        self.receive(connection: connection, accumulated: buffer)
+        return
+      }
+
+      // Content-Length を解析してボディ完了判定
+      let headerData = buffer[..<sepRange.lowerBound]
+      let bodyData = buffer[sepRange.upperBound...]
+      let headerText = String(data: headerData, encoding: .utf8) ?? ""
+      let contentLength = Self.parseContentLength(from: headerText) ?? 0
+
+      if bodyData.count < contentLength {
+        if isComplete || buffer.count >= 65536 {
+          connection.cancel()
+          return
+        }
+        self.receive(connection: connection, accumulated: buffer)
         return
       }
 
       Task { @MainActor [weak self] in
         guard let self else { return }
-        let response = await self.handle(data)
+        let response = await self.handle(buffer)
         connection.send(content: response, completion: .contentProcessed { _ in
           connection.cancel()
         })
       }
     }
+  }
+
+  /// HTTP ヘッダー文字列から Content-Length を取り出す（大文字小文字を区別しない）。
+  private static func parseContentLength(from headers: String) -> Int? {
+    for line in headers.components(separatedBy: "\r\n") {
+      let parts = line.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: false)
+      guard parts.count == 2 else { continue }
+      let name = parts[0].trimmingCharacters(in: .whitespaces).lowercased()
+      if name == "content-length" {
+        let value = parts[1].trimmingCharacters(in: .whitespaces)
+        return Int(value)
+      }
+    }
+    return nil
   }
 
   @MainActor

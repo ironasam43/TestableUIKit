@@ -53,6 +53,11 @@ def perform(base_url, test_id):
             "parameters": parameters,
         }
         resp = requests.post(f"{base_url}/perform", json=payload, timeout=10)
+        if not resp.ok:
+            print(
+                f"\n[HTTP ERROR] {resp.status_code} on perform('{command_name}'): {resp.text}",
+                flush=True,
+            )
         resp.raise_for_status()
         return resp.json()
 
