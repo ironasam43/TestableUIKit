@@ -1,4 +1,4 @@
-最終更新：2026-06-02
+最終更新：2026-06-18
 
 # TestableUIKit 作業メモ
 
@@ -14,7 +14,7 @@
 - M-3-0 git cleanup ✅ / M-3-1 OS·device matrix 確定（iOS 16.0 / iPhone 16 + iPad Air）✅ / M-3-3 CI/CD 統合 ✅
 - M-4 setProperty 拡張（isEnabled/title/isHidden/alpha/backgroundColor）✅ — **合計 23 tests PASS**
 
-## 現在地：M-5（テストランナー統合）進行中 → 実用化ロードマップ確定 ✅
+## 現在地：STEP 1 完了・push 済み ✅ → STEP 2（実 SwiftUI コンポーネント計装）へ
 
 ### ✅ 完了済み
 - Phase 0 PoC `probe-simulator` job 修正完了（commit `5de08ca` + `0f23586`）
@@ -24,27 +24,23 @@
 - 実 API 仕様を `run_test.py` 全行照合で確定：
   - `GET /ping` → `{"status":"ok"}`
   - `POST /perform` body: `{"testID","commandName":"getState"|"tap"|"setProperty","parameters":{}|{"key","value"}}`
-  - ⚠️ 単独エンドポイント（/setProperty 等）は存在しない。すべて `POST /perform` で discriminate
-  - ⚠️ tap/setProperty の Response schema は未 assert（Phase 1 設計時に確定）。getState のみ確定済み
+  - 単独エンドポイント（/setProperty 等）は存在しない。すべて `POST /perform` で discriminate
+  - Response schema 確定済み（getState / tap / setProperty とも）→ `docs/ipc-protocol.md` に明文化
 - **実用化ロードマップを正式ドキュメント化** ✅
   - `docs/roadmap.md` 新規作成：実用化の定義、現在地（到達済み）、4ステップ（STEP 1-4）、推奨ルートを明文化
   - STEP 1（テストランナー昇格）→ STEP 2（SwiftUI対応）→ STEP 3（DX整備）→ STEP 4（実機対応）の依存順・工数・完了条件を確定
   - 既存の design.md A/B/C/D 区分との整合確認：STEP 1/2/4 は B/C/D に1対1対応、STEP 3 は新規カテゴリ（対応設計書は追って作成）
 
-### 🔄 次セッション開始前の必須手順（Phase 1 着手）
-1. GitHub PAT に `workflow` scope 追加（Human 対応）
-2. `git push --dry-run` で scope 検証 → `git log origin/main..HEAD | wc -l` で commit 数再取得
-3. scope OK 後 `git push` → GitHub Actions 自動開始
-4. CI 結果：PASS→Phase 0 job 削除＋Phase 1 着手 / FAIL（同一カテゴリ×2回）→案B（XCTest UITest）へ撤退
+### ✅ STEP 1 完了・push 済み（pytest 昇格 / IPC Response schema 確定 / NWConnection 修正）
+- **pytest 昇格**: `Tests/conftest.py` / `Tests/test_ipc.py` で run_test.py を pytest として正式化（commit `1e42817` / `b0d978d`）
+- **IPC Response schema 確定**: tap / setProperty の Response schema を確定・`docs/ipc-protocol.md` に明文化（commit `1e42817`）
+- **NWConnection 部分受信修正**: TCP ソケットの不完全受信対策修正（commit `7f5be89`）
+- **GitHub push 完了**: 上記 3 commit が origin/main に統合済み
 
-### Phase 1 開始条件
-- Phase 0 CI PASS 必須（GitHub PAT scope 後）
-- `docs/roadmap.md` で実用化パス確定 ✅ → Phase 1 = roadmap.md STEP 1（テストランナー昇格）着手
-- run_test.py 全行照合に基づく pytest 重設計
-- tap・setProperty Response schema 本格確定
+## 次ステップ：STEP 2（実 SwiftUI コンポーネント計装）
+- 目的：STEP 1 で確立した pytest テストランナーを使い、実際の SwiftUI コンポーネント（CLIDemoLoginButton → SwiftUI View）を計装し、エンドツーエンド統合テストの実行可能性を検証する
+- ゲート：STEP 1 完了・ブロッカーなし ✅（pytest 環境整備済み、IPC protocol 確定済み）
+- 期待結果：SwiftUI コンポーネント 1-2 個の計装完了＋対応する pytest テストの実行・PASS
 
-## M-5+ 候補
-- M-5: run_test.py を pytest/XCTest 正式スイート昇格・CI 組込（xcodebuild test）
-- M-5: 実機テスト対応（Provisioning・device UUID 管理／高コスト）
-- M-6: SwiftUI コンポーネント対応（CLIDemoLoginButton → SwiftUI View）
-- 低優先：setProperty 拡張（fontSize/textColor/cornerRadius）、マルチコンポーネント統合テスト、CI matrix 複数 iOS 版
+## 🔄 積み残し
+- **MCP ラッパー化（STEP 1.5）**: Dev/ `docs/test-strategy.md` で IPC テスト戦略全体への MCP ラッパー化（Python → Swift 統一化）の差し込み案がレビュー待ち中。STEP 2 着手時点での採否は別途決定（Design C セクションで後追い検討）
