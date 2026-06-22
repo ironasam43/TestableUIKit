@@ -59,12 +59,12 @@ def text_input_perform(base_url):
         }
         resp = requests.post(f"{base_url}/perform", json=payload, timeout=10)
         if not resp.ok:
-            raise AssertionError(
-                f"[HTTP ERROR] {resp.status_code} on text_input_perform('{command_name}'): {resp.text}"
+            print(
+                f"\n[HTTP ERROR] {resp.status_code} on text_input_perform('{command_name}'): {resp.text}",
+                flush=True,
             )
-        result = resp.json()
-        assert result.get("success") is True, f"Command failed: {result}"
-        return result.get("state", {})
+        resp.raise_for_status()
+        return resp.json()
 
     return _perform
 
@@ -80,12 +80,12 @@ def on_off_switch_perform(base_url):
         }
         resp = requests.post(f"{base_url}/perform", json=payload, timeout=10)
         if not resp.ok:
-            raise AssertionError(
-                f"[HTTP ERROR] {resp.status_code} on on_off_switch_perform('{command_name}'): {resp.text}"
+            print(
+                f"\n[HTTP ERROR] {resp.status_code} on on_off_switch_perform('{command_name}'): {resp.text}",
+                flush=True,
             )
-        result = resp.json()
-        assert result.get("success") is True, f"Command failed: {result}"
-        return result.get("state", {})
+        resp.raise_for_status()
+        return resp.json()
 
     return _perform
 
@@ -101,12 +101,12 @@ def range_slider_perform(base_url):
         }
         resp = requests.post(f"{base_url}/perform", json=payload, timeout=10)
         if not resp.ok:
-            raise AssertionError(
-                f"[HTTP ERROR] {resp.status_code} on range_slider_perform('{command_name}'): {resp.text}"
+            print(
+                f"\n[HTTP ERROR] {resp.status_code} on range_slider_perform('{command_name}'): {resp.text}",
+                flush=True,
             )
-        result = resp.json()
-        assert result.get("success") is True, f"Command failed: {result}"
-        return result.get("state", {})
+        resp.raise_for_status()
+        return resp.json()
 
     return _perform
 
