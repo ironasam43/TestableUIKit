@@ -22,7 +22,7 @@ struct RootView: View {
         do {
           let s = try TestableServer(port: 8888)
           await TestableRegistry.shared.register(loginButton)
-          await TestableRegistry.shared.register(counter)
+          // counter は CounterView に付与した .testable(counter) で自動登録
           s.start()
           server = s
           serverRunning = true
@@ -76,8 +76,9 @@ struct ContentView: View {
           .foregroundColor(.secondary)
       }
 
-      // Counter コンポーネント
+      // Counter コンポーネント（.testable で自動登録）
       CounterView(counter: counter)
+        .testable(counter)
 
       Text("Run in Terminal:\npython3 run_test.py")
         .font(.caption)

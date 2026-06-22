@@ -307,15 +307,35 @@ grep -c "isa = PBXSourcesBuildPhase" TestableUIKitDemo.xcodeproj/project.pbxproj
 
 **概要**: CLI スタブ実装から実 SwiftUI コンポーネントへの移行
 
-**現状**: `CLIDemoLoginButton` は `@MainActor class` の CLI デモ
+**現状（STEP 3 完了）**: `Counter`（testID: `scene.demo.counter`）が計装済み
 
 **目標**: 実 SwiftUI `Button` `Toggle` などを Testable にラップ
 
-**実装パターン**:
-- ViewModifier で AnyTestable プロトコル適用
-- EnvironmentObject で TestableRegistry アクセス
+**実装パターン（① 実装済み / ② 次タスク）**:
 
-**工数**: 1〜2 セッション（設計変更大）
+#### ① ViewModifier による宣言的登録（STEP 3 実装済み）
+
+`Sources/TestableUIKit/TestableView.swift` で `.testable(_:)` 拡張メソッドを提供。
+
+```swift
+// コンポーネント作者が書くコード（手動 register 不要）
+CounterView(counter: counter)
+  .testable(counter)
+```
+
+- `TestableRegistrationModifier`（`ViewModifier` 準拠）が View 表示開始時（`.task`）に
+  `await TestableRegistry.shared.register(testable)` を自動実行
+- **命名の注記**: `@testable` は Swift の `@testable import` で予約済みのため属性構文は使用不可。
+  メソッド構文（`.testable(_:)`）を採用して衝突を回避
+- `@available(iOS 15.0, macOS 13.0, *)` — `.task` 修飾子の最小要件に合わせた availability
+
+#### ② EnvironmentObject による Registry 注入（次タスクへ deferred）
+
+グローバルシングルトン（`TestableRegistry.shared`）廃止 → `EnvironmentObject` / `Environment` で
+Registry を View ツリーへ注入する方式。`TestableServer.find` の参照経路の再設計を伴うため、
+本タスクスコープ外（大改修）として次タスク候補へ分離。
+
+**工数**: ① 完了（STEP 3）/ ② 1 セッション（グローバルシングルトン廃止が必要）
 
 ---
 
