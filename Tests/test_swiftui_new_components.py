@@ -194,7 +194,8 @@ class TestRangeSlider:
         # reset を実行
         reset_state = range_slider_perform("reset")
         assert_range_slider_state(reset_state)
-        # 確認: value がデフォルト値に戻っている（通常は minValue）
-        assert reset_state.get("value") == reset_state.get("minValue"), (
-            f"Expected value to reset to minValue, got: {reset_state.get('value')}"
+        # 確認: value が中央値（(maxValue - minValue)/2 + minValue）にリセットされている
+        expected_reset_value = (reset_state.get("maxValue") - reset_state.get("minValue")) / 2 + reset_state.get("minValue")
+        assert reset_state.get("value") == expected_reset_value, (
+            f"Expected value to reset to midpoint {expected_reset_value}, got: {reset_state.get('value')}"
         )
