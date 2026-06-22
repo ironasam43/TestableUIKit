@@ -18,8 +18,9 @@
 - STEP 2 CI 統合 ✅（2026-06-22）— **CI pytest 31 PASS（test_ipc.py 10 + test_swiftui_counter.py 21）**
 - STEP 3 DX整備 ✅（2026-06-22）— **SPM 37 PASS（+4）・push 済み（`1b23042`/`70eee1d`）**
 - STEP 4 TestableRegistry シングルトン廃止・Environment キー注入 ✅（2026-06-22）— **SPM 38 PASS（+1）・push 済み（`3718c98`/`6151ae1`、`70eee1d..6151ae1`）・CI pytest 31 PASS**
+- **STEP 2 追加実証 — 多様コンポーネント計装** ✅（2026-06-22）— **SPM 86 PASS（+48）・TextInput/OnOffSwitch/RangeSlider 新規計装・pytest E2E 追加・docs 更新**
 
-## 現在地：STEP 4 完全クローズ（push 済み・CI PASS）→ 次ステップ選択へ
+## 現在地：STEP 2 追加実証 完全クローズ（実装済み・機械検証 PASS）→ 次ステップ選択へ
 
 ### ✅ STEP 4 完了（2026-06-22）：TestableRegistry シングルトン廃止・Environment キー注入（Design C ②）
 - **`Sources/TestableUIKit/AnyTestable.swift`**:
@@ -65,10 +66,20 @@
 ## ✅ 実装完了項目
 1. **STEP 3/4 push + CI 確認** ✅: commit `1b23042`（STEP 3）＋ `3718c98`（STEP 4）を origin/main へ push → CI pytest 31 PASS 維持（2026-06-22）
 2. **STEP 4.5 loginButton ViewModifier 移行** ✅（2026-06-22）: DemoApp.swift の手動 `registry.register(loginButton)` を削除、ContentView の loginButton VStack に `.testable(loginButton)` 付与。Counter と登録方式統一。SPM `swift test` 38 PASS 維持。
+3. **STEP 2 追加実証 — 多様コンポーネント計装（TextInput / OnOffSwitch / RangeSlider）** ✅（2026-06-22）:
+   - Core 層 3 ファイル新規（TextInputCore / OnOffSwitchCore / RangeSliderCore）+ XCTest 3 ファイル（各 ~14 テスト）
+   - DemoApp Views 3 ファイル新規（TextInputView / OnOffSwitchView / RangeSliderView）
+   - DemoApp.swift 更新（@StateObject ×3 + ContentView に View + .testable() ×3）
+   - pytest E2E 追加（test_swiftui_new_components.py 新規）
+   - ci.yml 更新（新規 pytest ファイル追加）
+   - docs/design.md・history.md・handoff.md 更新
+   - SPM `swift test` **86 PASS** 確認
+   - VQ 起票なし（機械検証で完結）
 
 ## 次ステップ候補
-1. **STEP 2 追加実証**: 3個以上 ＋ Picker/TextField など多様コンポーネント計装
+1. **さらに多くのコンポーネント計装**: Picker / DatePicker / List など SwiftUI 標準コンポーネントの拡張
 2. **STEP 1.5 MCP ラッパー化**: Python → Swift 統一化
+3. **実機テスト対応（Design D）**: iOS Simulator から実 iPhone へ拡張
 
 ## 🔄 積み残し
 - **MCP ラッパー化（STEP 1.5）**: Dev/ `docs/test-strategy.md` で差し込み案がレビュー待ち中。採否は別途決定

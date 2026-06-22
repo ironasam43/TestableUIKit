@@ -13,13 +13,16 @@ struct TestableUIApp: App {
 struct RootView: View {
   @StateObject private var loginButton = LoginButton()
   @StateObject private var counter = Counter()
+  @StateObject private var textInput = TextInput()
+  @StateObject private var onOffSwitch = OnOffSwitch()
+  @StateObject private var rangeSlider = RangeSlider()
   // Registry インスタンスをアプリ起点で1つ生成し、サーバと View ツリーへ注入する
   @State private var registry = TestableRegistry()
   @State private var server: TestableServer?
   @State private var serverRunning = false
 
   var body: some View {
-    ContentView(loginButton: loginButton, counter: counter, serverRunning: $serverRunning)
+    ContentView(loginButton: loginButton, counter: counter, textInput: textInput, onOffSwitch: onOffSwitch, rangeSlider: rangeSlider, serverRunning: $serverRunning)
       // 同一 registry を View ツリー全体へ注入（CounterView の .testable() が利用）
       .environment(\.testableRegistry, registry)
       .task {
@@ -41,6 +44,9 @@ struct RootView: View {
 struct ContentView: View {
   @ObservedObject var loginButton: LoginButton
   @ObservedObject var counter: Counter
+  @ObservedObject var textInput: TextInput
+  @ObservedObject var onOffSwitch: OnOffSwitch
+  @ObservedObject var rangeSlider: RangeSlider
   @Binding var serverRunning: Bool
 
   var body: some View {
@@ -85,6 +91,33 @@ struct ContentView: View {
       CounterView(counter: counter)
         .testable(counter)
 
+      Divider()
+        .padding()
+
+      // TextInput コンポーネント（.testable で自動登録）
+      VStack(spacing: 8) {
+        Text("TextInput")
+          .font(.headline)
+        TextInputView(textInput: textInput)
+      }
+      .testable(textInput)
+
+      // OnOffSwitch コンポーネント（.testable で自動登録）
+      VStack(spacing: 8) {
+        Text("OnOffSwitch")
+          .font(.headline)
+        OnOffSwitchView(onOffSwitch: onOffSwitch)
+      }
+      .testable(onOffSwitch)
+
+      // RangeSlider コンポーネント（.testable で自動登録）
+      VStack(spacing: 8) {
+        Text("RangeSlider")
+          .font(.headline)
+        RangeSliderView(rangeSlider: rangeSlider)
+      }
+      .testable(rangeSlider)
+
       Text("Run in Terminal:\npython3 run_test.py")
         .font(.caption)
         .foregroundColor(.secondary)
@@ -101,6 +134,9 @@ struct ContentView: View {
   ContentView(
     loginButton: LoginButton(),
     counter: Counter(),
+    textInput: TextInput(),
+    onOffSwitch: OnOffSwitch(),
+    rangeSlider: RangeSlider(),
     serverRunning: .constant(true)
   )
 }

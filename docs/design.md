@@ -359,6 +359,20 @@ Registry を View ツリーへ注入する方式を STEP 4 で実装。
 `.testable(loginButton)` ViewModifier へ移行。RootView の `.task` 内の手動 `await registry.register(loginButton)` を廃止し、
 Counter と登録方式を統一。実装完了（STEP 4.5）。
 
+#### 計装済みコンポーネント一覧（STEP 2 時点）
+
+| コンポーネント | testID | 状態型 | コマンド | 実装タイミング |
+|---|---|---|---|---|
+| Counter | `scene.demo.counter` | `Int` / `Bool` | getState, increment, decrement, reset, setProperty | STEP 3 |
+| LoginButton | `scene.auth.loginButton` | `String` / `Bool` / `Double` | getState, tap, setProperty, setEnabled | STEP 4 |
+| TextInput | `scene.demo.textInput` | `String` x3 / `Bool` | getState, clear, setProperty | STEP 2 |
+| OnOffSwitch | `scene.demo.onOffSwitch` | `Bool` / `String` / `Bool` | getState, toggle, setProperty | STEP 2 |
+| RangeSlider | `scene.demo.rangeSlider` | `Double` x3 | getState, reset, setProperty | STEP 2 |
+
+**STEP 2 追加実証（2026-06-22）**: TextInput / OnOffSwitch / RangeSlider を新規計装。
+Core 層（純粋関数 → XCTest で 86 PASS）と SwiftUI View（.testable() 宣言的登録）で既存パターンに統一。
+pytest E2E 追加（test_swiftui_new_components.py にて疎通確認）。
+
 ---
 
 ### D: 実機テスト対応
