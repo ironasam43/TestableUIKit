@@ -16,10 +16,10 @@
 - STEP 1 pytest 昇格 / IPC Response schema 確定 / NWConnection 修正 ✅ — **CI 全3ジョブ PASS・push 済み**
 - STEP 2 実 SwiftUI コンポーネント計装 ✅（Counter）— **SPM 33 PASS・CI push 済み**
 - STEP 2 CI 統合 ✅（2026-06-22）— **CI pytest 31 PASS（test_ipc.py 10 + test_swiftui_counter.py 21）**
-- STEP 3 DX整備 ✅（2026-06-22）— **SPM 37 PASS（+4）・push 待ち（commit `1b23042`）**
-- STEP 4 TestableRegistry シングルトン廃止・Environment キー注入 ✅（2026-06-22）— **SPM 38 PASS（+1）・ローカルコミット済み・push 待ち**
+- STEP 3 DX整備 ✅（2026-06-22）— **SPM 37 PASS（+4）・push 済み（`1b23042`/`70eee1d`）**
+- STEP 4 TestableRegistry シングルトン廃止・Environment キー注入 ✅（2026-06-22）— **SPM 38 PASS（+1）・push 済み（`3718c98`/`6151ae1`、`70eee1d..6151ae1`）・CI pytest 31 PASS**
 
-## 現在地：STEP 4 完了 → push + CI 確認 → 次ステップ選択へ
+## 現在地：STEP 4 完全クローズ（push 済み・CI PASS）→ 次ステップ選択へ
 
 ### ✅ STEP 4 完了（2026-06-22）：TestableRegistry シングルトン廃止・Environment キー注入（Design C ②）
 - **`Sources/TestableUIKit/AnyTestable.swift`**:
@@ -69,7 +69,7 @@
 4. **STEP 1.5 MCP ラッパー化**: Python → Swift 統一化
 
 ## 🔄 積み残し
-- **push 待ち**: commit `1b23042`（STEP 3）＋ `3718c98`（STEP 4）を origin/main へ push → Human の明示指示で
+- ~~push 待ち~~ ✅ 解消（2026-06-22）: STEP 3/4 全コミット push 済み（`6151ae1` まで）・CI run #27928282529 全3ジョブ PASS・pytest 31 維持
 - **MCP ラッパー化（STEP 1.5）**: Dev/ `docs/test-strategy.md` で差し込み案がレビュー待ち中。採否は別途決定
 
 ---
