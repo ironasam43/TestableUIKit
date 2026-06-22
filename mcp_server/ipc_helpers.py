@@ -5,8 +5,41 @@ HTTP IPC の payload 構築・レスポンス passthrough・simctl コマンド�
 外部依存なし。Simulator/DemoApp 不要で単体テスト可能。
 """
 
+import os
+
 DEFAULT_IPC_HOST = "localhost"
 DEFAULT_IPC_PORT = 8888
+
+# 環境変数名定数（Design D: LAN 越し IPC 接続先の上書き用）
+ENV_IPC_HOST = "TESTABLE_IPC_HOST"
+ENV_IPC_PORT = "TESTABLE_IPC_PORT"
+
+
+def resolve_ipc_host_port(env: dict = None) -> tuple:
+    """環境変数から IPC 接続先の host・port を解決する。
+
+    環境変数が未設定の場合は既定値（localhost:8888）を返す。
+    引数 env に dict を渡すと os.environ の代わりに使用する（テスト用）。
+
+    Args:
+        env: 参照する環境変数 dict（省略時は os.environ）
+
+    Returns:
+        (host: str, port: int) のタプル
+
+    環境変数:
+        TESTABLE_IPC_HOST: 接続先ホスト（既定: "localhost"）
+        TESTABLE_IPC_PORT: 接続先ポート番号文字列（既定: 8888）
+    """
+    if env is None:
+        env = os.environ
+    host = env.get(ENV_IPC_HOST, DEFAULT_IPC_HOST)
+    port_str = env.get(ENV_IPC_PORT, str(DEFAULT_IPC_PORT))
+    try:
+        port = int(port_str)
+    except ValueError:
+        port = DEFAULT_IPC_PORT
+    return host, port
 
 
 def build_base_url(host: str = DEFAULT_IPC_HOST, port: int = DEFAULT_IPC_PORT) -> str:

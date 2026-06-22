@@ -15,10 +15,13 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "mcp_serv
 from ipc_helpers import (
     DEFAULT_IPC_HOST,
     DEFAULT_IPC_PORT,
+    ENV_IPC_HOST,
+    ENV_IPC_PORT,
     build_base_url,
     build_perform_payload,
     build_simctl_screenshot_command,
     passthrough_state,
+    resolve_ipc_host_port,
 )
 
 
@@ -201,3 +204,82 @@ class TestBuildSimctlScreenshotCommand:
         """'booted' がコマンドに含まれる"""
         cmd = build_simctl_screenshot_command("/tmp/test.png")
         assert "booted" in cmd
+
+
+# ================================================================
+# resolve_ipc_host_port (Design D: LAN 越し IPC 環境変数解決)
+# ================================================================
+
+
+class TestResolveIpcHostPort:
+    def test_defaults_when_no_env(self):
+        """環境変数なしで既定値 (localhost, 8888) が返る"""
+        host, port = resolve_ipc_host_port(env={})
+        assert host == "localhost"
+        assert port == 8888
+
+    def test_env_host_overrides(self):
+        """TESTABLE_IPC_HOST で接続先ホストを上書きできる"""
+        host, port = resolve_ipc_host_port(env={ENV_IPC_HOST: "192.168.1.100"})
+        assert host == "192.168.1.100"
+        assert port == 8888
+
+    def test_env_port_overrides(self):
+        """TESTABLE_IPC_PORT で接続先ポートを上書きできる"""
+        host, port = resolve_ipc_host_port(env={ENV_IPC_PORT: "9000"})
+        assert host == "localhost"
+        assert port == 9000
+
+    def test_env_host_and_port_both_override(self):
+        """ホストとポートを両方上書きできる"""
+        host, port = resolve_ipc_host_port(
+            env={ENV_IPC_HOST: "10.0.0.1", ENV_IPC_PORT: "9999"}
+        )
+        assert host == "10.0.0.1"
+        assert port == 9999
+
+    def test_invalid_port_falls_back_to_default(self):
+        """不正なポート文字列は既定ポート 8888 にフォールバックする"""
+        host, port = resolve_ipc_host_port(env={ENV_IPC_PORT: "not_a_number"})
+        assert port == DEFAULT_IPC_PORT
+
+    def test_returns_tuple(self):
+        """(host, port) のタプルを返す"""
+        result = resolve_ipc_host_port(env={})
+        assert isinstance(result, tuple)
+        assert len(result) == 2
+
+    def test_host_is_str(self):
+        """host は str を返す"""
+        host, _ = resolve_ipc_host_port(env={})
+        assert isinstance(host, str)
+
+    def test_port_is_int(self):
+        """port は int を返す"""
+        _, port = resolve_ipc_host_port(env={})
+        assert isinstance(port, int)
+
+    def test_env_constant_host_name(self):
+        """ENV_IPC_HOST 定数が正しい文字列"""
+        assert ENV_IPC_HOST == "TESTABLE_IPC_HOST"
+
+    def test_env_constant_port_name(self):
+        """ENV_IPC_PORT 定数が正しい文字列"""
+        assert ENV_IPC_PORT == "TESTABLE_IPC_PORT"
+
+    def test_default_host_matches_constant(self):
+        """デフォルト host が DEFAULT_IPC_HOST と一致する"""
+        host, _ = resolve_ipc_host_port(env={})
+        assert host == DEFAULT_IPC_HOST
+
+    def test_default_port_matches_constant(self):
+        """デフォルト port が DEFAULT_IPC_PORT と一致する"""
+        _, port = resolve_ipc_host_port(env={})
+        assert port == DEFAULT_IPC_PORT
+
+    def test_build_base_url_with_resolved_values(self):
+        """resolve_ipc_host_port の結果を build_base_url に渡して URL が組み立てられる"""
+        env = {ENV_IPC_HOST: "192.168.1.50", ENV_IPC_PORT: "9001"}
+        host, port = resolve_ipc_host_port(env=env)
+        url = build_base_url(host=host, port=port)
+        assert url == "http://192.168.1.50:9001"

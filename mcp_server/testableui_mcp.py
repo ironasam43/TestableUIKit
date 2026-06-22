@@ -33,6 +33,7 @@ from ipc_helpers import (
     build_perform_payload,
     build_simctl_screenshot_command,
     passthrough_state,
+    resolve_ipc_host_port,
 )
 
 import requests
@@ -43,7 +44,10 @@ from mcp.server.fastmcp import FastMCP
 # ================================================================
 
 mcp = FastMCP("TestableUIKit")
-_IPC_BASE = build_base_url()
+
+# 環境変数 TESTABLE_IPC_HOST / TESTABLE_IPC_PORT で接続先を上書き可（既定: localhost:8888）
+_ipc_host, _ipc_port = resolve_ipc_host_port()
+_IPC_BASE = build_base_url(host=_ipc_host, port=_ipc_port)
 
 
 # ================================================================

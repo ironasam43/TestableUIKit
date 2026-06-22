@@ -16,10 +16,18 @@ import subprocess
 import time
 import os
 
+# mcp_server/ を import パスに追加（resolve_ipc_host_port 使用）
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "mcp_server"))
+from ipc_helpers import resolve_ipc_host_port
+
+# 環境変数 TESTABLE_IPC_HOST / TESTABLE_IPC_PORT で接続先を上書き可（既定: localhost:8888）
+_ipc_host, _ipc_port = resolve_ipc_host_port()
+IPC_BASE_URL = f"http://{_ipc_host}:{_ipc_port}"
+
 
 def send_http_request(method: str, path: str, data: dict = None) -> dict:
     """Generic HTTP request via curl"""
-    url = f"http://localhost:8888{path}"
+    url = f"{IPC_BASE_URL}{path}"
 
     curl_cmd = ["curl", "-s", "-X", method, url]
 

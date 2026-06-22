@@ -6,27 +6,43 @@ public final class TestableServer: @unchecked Sendable {
   private let listener: NWListener
   private let queue = DispatchQueue(label: "testable.server", qos: .userInitiated)
   public let port: UInt16
+  /// bind ホスト。"127.0.0.1"（既定）= ループバックのみ / "0.0.0.0" = 全インターフェース（LAN 公開）
+  public let host: String
   private let registry: TestableRegistry
 
   private static let headerSeparator = Data([0x0D, 0x0A, 0x0D, 0x0A]) // \r\n\r\n
 
   /// - Parameters:
   ///   - port: 待ち受けポート（既定 8888）
+  ///   - host: bind アドレス（既定 "127.0.0.1" = ループバック限定。"0.0.0.0" で LAN 公開可）
   ///   - registry: コンポーネントの登録・検索に使う Registry インスタンス。
   ///               アプリ側で生成した同一インスタンスを渡すことでシングルトンを廃止する。
-  public init(port: UInt16 = 8888, registry: TestableRegistry) throws {
+  public init(port: UInt16 = 8888, host: String = "127.0.0.1", registry: TestableRegistry) throws {
     self.port = port
+    self.host = host
     self.registry = registry
     guard let nwPort = NWEndpoint.Port(rawValue: port) else {
       throw TestError.invalidParameters
     }
-    self.listener = try NWListener(using: .tcp, on: nwPort)
+    let params = NWParameters.tcp
+    if host == "0.0.0.0" {
+      // 全インターフェース（LAN 公開）— ポートのみ指定し NWListener の既定挙動を使用
+      self.listener = try NWListener(using: params, on: nwPort)
+    } else {
+      // 特定ホストに bind（既定: 127.0.0.1 ループバックのみ）
+      // requiredLocalEndpoint で NW スタックが指定 IP のみで待受する
+      let endpoint = NWEndpoint.hostPort(host: NWEndpoint.Host(host), port: nwPort)
+      params.requiredLocalEndpoint = endpoint
+      self.listener = try NWListener(using: params)
+    }
   }
 
   public func start() {
+    let host = self.host
+    let port = self.port
     listener.stateUpdateHandler = { state in
       if case .ready = state {
-        print("✅ TestableServer listening on http://localhost:8888")
+        print("✅ TestableServer listening on http://\(host):\(port)")
       } else if case .failed(let error) = state {
         print("❌ TestableServer failed: \(error)")
       }

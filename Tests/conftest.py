@@ -2,15 +2,27 @@
 pytest fixtures for TestableUIKit IPC integration tests.
 
 前提: DemoApp が iOS Simulator 上で起動済みで、
-      localhost:8888 で TestableServer がリッスンしている。
+      TestableServer がリッスンしている。
+
+接続先の上書き（Design D: LAN 越し IPC）:
+  TESTABLE_IPC_HOST 環境変数で接続先ホストを変更可（既定: localhost）
+  TESTABLE_IPC_PORT 環境変数で接続先ポートを変更可（既定: 8888）
 """
+
+import os
+import sys
 
 import pytest
 import requests
 
+# mcp_server/ を import パスに追加（resolve_ipc_host_port 使用）
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "mcp_server"))
+from ipc_helpers import resolve_ipc_host_port
+
 # ========== 定数 ==========
 
-BASE_URL = "http://localhost:8888"
+_ipc_host, _ipc_port = resolve_ipc_host_port()
+BASE_URL = f"http://{_ipc_host}:{_ipc_port}"
 TEST_ID = "scene.auth.loginButton"
 
 # LoginButton の初期状態（5キー固定）
