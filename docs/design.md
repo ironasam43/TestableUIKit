@@ -449,6 +449,38 @@ python3 mcp_server/testableui_mcp.py
 
 ---
 
+### D コード下地（実装済み・2026-06-22）
+
+純コード部分（LAN 越し IPC 対応の前提となるコード変更）を先行実装。
+物理ハードウェア・Provisioning・実機ペアリングはスコープ外（Human が後段で実施）。
+
+**サーバー側 `TestableServer` の bind 拡張**:
+- `init(port:host:registry:)` に `host` 引数追加（既定 `"127.0.0.1"` = ループバック限定）
+- `"0.0.0.0"` 指定で全インターフェース（LAN 公開）に bind
+- `NWParameters.requiredLocalEndpoint` でランタイム bind アドレスを制御
+- `public let host: String` プロパティとして外部公開
+- 後方互換: 既存の `TestableServer(port: 8888, registry: registry)` 呼び出しは引数省略で動作（デグレなし）
+
+**後方互換注意点**: 旧実装は print のみ "localhost" と表示し実際は全インターフェースバインドだった。
+本実装でランタイムも loopback 限定（`127.0.0.1`）に統一。接続元は全て localhost 系のため実被害なし。よりセキュアな狭化として意図に合致。
+
+**クライアント側の接続先設定可能化**:
+- `ipc_helpers.py`: `resolve_ipc_host_port(env:)` 追加（env 引数で L1 テスト可能な純粋関数）
+  - `TESTABLE_IPC_HOST` 環境変数で接続先ホストを上書き（既定: `localhost`）
+  - `TESTABLE_IPC_PORT` 環境変数で接続先ポートを上書き（既定: `8888`）
+  - 不正なポート文字列は既定値へフォールバック
+- `mcp_server/testableui_mcp.py`: 起動時に env から host/port を解決して `_IPC_BASE` を生成
+- `Tests/conftest.py` / `run_test.py`: `resolve_ipc_host_port()` 経由で BASE_URL を動的生成
+
+**L1 テスト追加**:
+- Swift: `Tests/TestableUIKitTests/TestableServerTests.swift`（10 テスト: 既定値・LAN 公開 host・後方互換）
+- Python: `Tests/unit/test_mcp_helpers.py` の `TestResolveIpcHostPort`（13 テスト）
+- DoD: `swift test` 96 PASS / pytest unit 42 PASS / commit `7d81160`
+
+**残余（VQ 送り）**: 実機 Wi-Fi 越し実通信の確認（実 iPhone ペアリング後）→ `docs/verify-queue.md` 参照
+
+---
+
 ## References
 
 - `docs/ipc-protocol.md` — HTTP API specification
