@@ -5,7 +5,7 @@
 
 ## 未確認
 
-- [ ] **STEP 1.5 残 — `ui_screenshot` の実機未対応（設計ギャップ）**: `ui_screenshot` は `build_simctl_screenshot_command` → `simctl io booted screenshot`（Simulator 専用）ハードコードのため**実機では原理的に取得不可**。3/4 ツール（ping/getState/perform）は実機 live で確認済み（消し込み欄参照）だが screenshot のみ未達。残作業の選択肢：(a) Simulator で DemoApp を起動し `ui_screenshot` の PNG base64 返却を確認（既存実装のまま Simulator 限定で合格扱い）／(b) 実機対応のスクリーンショット経路を新規実装（`xcrun devicectl` 等）。**検証手順**：選んだ経路で DemoApp 起動 → MCP `ui_screenshot` 呼び出し → 戻り値に `image_base64`（非空）・`format:"png"` が含まれることを確認。**合格**：PNG base64 が返却されること。
+- [ ] **`ui_screenshot` 実機対応 実装済み — 実機での実 PNG 取得確認（commit `78716fd`）**: `GET /screenshot`（provider 注入）経路を実装。`DemoApp` 再インストール後、**①** 実機（`192.168.0.181`）で DEBUG ビルド DemoApp を起動 → **②** `TESTABLE_IPC_HOST=192.168.0.181 python3 -c "import mcp_server.testableui_mcp as m; import asyncio; print(asyncio.run(m.ui_screenshot()))"` を実行 → **③** 戻り値に `image_base64`（非空・有効 base64）・`format:"png"` が含まれることを確認。**合格**: PNG base64 が非空で返却され、base64 デコード後が PNG ヘッダ（`\x89PNG`）で始まること。
 
 ## 機械検証済み・消し込み
 

@@ -1,4 +1,4 @@
-最終更新：2026-06-23（実機 Wi-Fi 越し疎通成立 ＋ MCP live PoC 3/4 ツール実機駆動 ＋ 全 push・CI green）
+最終更新：2026-06-23（`ui_screenshot` 実機対応実装済み — GET /screenshot + screenshotProvider 注入・swift test 100 PASS・pytest 59 PASS・commit `78716fd`）
 
 # TestableUIKit 作業メモ
 
@@ -23,25 +23,26 @@
 - **Design D 下地 — LAN 越し IPC コード下地** ✅（2026-06-22）— **SPM 96 PASS（+10）・pytest unit 42 PASS（+13）・commit `7d81160`**
 - **STEP D: DemoApp DEBUG 限定 LAN 公開** ✅（2026-06-23）— **`DemoApp/DemoApp.swift` を `#if DEBUG` 分岐で `host: "0.0.0.0"` 指定・SPM 96 PASS 維持・commit `b66a831`**
 - **Design D 実機 Wi-Fi 越し疎通成立 ＋ MCP live PoC（3/4 ツール実機駆動）** ✅（2026-06-23）— **実機 iPhone `192.168.0.181` に MCP tool を直接駆動。ui_ping/ui_getState/ui_perform(count 0→1) を実機 e2e 実証・消し込み。ui_screenshot のみ simctl(Simulator)依存で実機不可＝別行で継続。全 8 commit push 済み・CI run `27989218172` 全3ジョブ green**
+- **`ui_screenshot` 実機対応実装（経路A: GET /screenshot + screenshotProvider 注入）** ✅（2026-06-23）— **TestableServer に screenshotProvider 注入 + GET /screenshot 追加、DemoApp に UIKit key window キャプチャ closure 注入、Python 側 GET /screenshot 一次経路化＋simctl フォールバック。swift test 100 PASS / pytest 59 PASS / commit `78716fd`。実機での実 PNG 取得確認は VQ へ起票（DemoApp 再インストール後）**
 
-## 現在地：Design D 実機検証クローズ（3/4）→ ui_screenshot の実機対応が残課題
+## 現在地：`ui_screenshot` 実機対応コード実装完了 → DemoApp 再インストール後の実 PNG 取得確認が残タスク
 
-### ✅ 実機 Wi-Fi 越し疎通 ＋ MCP live PoC 完了（2026-06-23）
-- 実機（iPhone `192.168.0.181`・DEBUG ビルド `b66a831`・`0.0.0.0:8888` リッスン）に対し:
-  - `curl http://192.168.0.181:8888/ping` → `{"status":"ok"}`（Design D 疎通成立・消し込み）
-  - MCP tool 関数を `TESTABLE_IPC_HOST=192.168.0.181` で直接駆動 → `ui_ping`/`ui_getState`（count:0）/`ui_perform increment`（count 0→1）/再 getState（count:1）。**MCP→HTTP IPC→実機 UI 変異→describedState 反映の e2e を実機実証**
-- **設計ギャップ**: `ui_screenshot` は `simctl io booted`（Simulator 専用）ハードコードで実機不可。VQ 未確認に別行分離（残作業：(a) Simulator 限定で合格扱い／(b) `devicectl` 等で実機対応経路を実装）
-- VQ 整備：誤削除されていた Design D ✅ 行を消し込み欄へ復元（commit `1da2d34`）
-- **push・CI**: 未 push だった全 8 commit（`5399849`〜`1da2d34`）を push（`a9e1dce..1da2d34`）→ CI run `27989218172` 全3ジョブ success（Build iOS DemoApp / Swift Package Unit Tests / IPC pytest）
+### ✅ `ui_screenshot` 実機対応実装完了（2026-06-23・commit `78716fd`）
+- `TestableServer` に `screenshotProvider: (@MainActor () async -> Data?)?` 引数追加（後方互換）＋ `GET /screenshot` エンドポイント追加
+- `DemoApp.swift` が `UIGraphicsImageRenderer` ＋ `UIApplication.shared.connectedScenes` でキャプチャする closure を注入（UIKit 依存は app 側に閉じ、ライブラリは状態レス維持）
+- `testableui_mcp.py:ui_screenshot()` を `GET /screenshot` 一次経路へ変更（loopback かつ endpoint 不達時のみ simctl フォールバック）
+- L1 テスト追加：Swift 4 テスト・pytest 17 テスト（`swift test` 100 PASS / `pytest` 59 PASS）
+- `docs/ipc-protocol.md` 追記・`docs/design.md` §D 拡張追記・`docs/history.md` 追記・VQ 更新
 
 ## 次ステップ候補
-1. **`ui_screenshot` の実機対応（VQ 未確認・筆頭）**: 現状 simctl(Simulator)依存で実機不可。(a) Simulator 限定で合格扱いにするか、(b) `xcrun devicectl` 等で実機スクリーンショット経路を新規実装するか方針決定が必要（verify-queue 参照）
-2. **さらに多くのコンポーネント計装**: Picker / DatePicker / List など SwiftUI 標準コンポーネントの拡張
-3. **実機ペアリング前提の運用整備**: 実機 IP（`192.168.0.181`）は DHCP で変わりうる。`TESTABLE_IPC_HOST` の設定手順を SETUP/README に明文化すると再現性が上がる
+1. **DemoApp 再インストール後の実機 PNG 取得確認（VQ 筆頭）**: 実機（`192.168.0.181`）に `78716fd` ベースの DEBUG ビルドを再インストール → `TESTABLE_IPC_HOST=192.168.0.181` で `ui_screenshot` を呼び PNG base64 取得を確認（VQ 参照）
+2. **CI push・CI green 確認**: commit `78716fd` を push して CI 全3ジョブ green を確認
+3. **さらに多くのコンポーネント計装**: Picker / DatePicker / List など SwiftUI 標準コンポーネントの拡張
+4. **実機ペアリング前提の運用整備**: 実機 IP（`192.168.0.181`）は DHCP で変わりうる。`TESTABLE_IPC_HOST` の設定手順を SETUP/README に明文化すると再現性が上がる
 
 ## 🔄 積み残し
-- **VQ 未確認 1 件**: `ui_screenshot` 実機未対応（設計ギャップ・上記次ステップ 1）。3/4 ツールは実機 e2e 済み・消し込み
-- 実機 `192.168.0.181` は DemoApp（DEBUG `b66a831`・`0.0.0.0:8888`）リッスン中。Mac から `TESTABLE_IPC_HOST=192.168.0.181` で MCP 駆動可能
+- **VQ 未確認 1 件（筆頭）**: `ui_screenshot` の実機での実 PNG 取得確認（DemoApp 再インストール後・`TESTABLE_IPC_HOST=192.168.0.181` で `ui_screenshot` → PNG base64 確認）。実装コード（`78716fd`）は完了済み
+- commit `78716fd` は未 push（Human の push 指示待ち）
 
 ---
 

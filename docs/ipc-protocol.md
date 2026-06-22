@@ -59,6 +59,41 @@ TestableUIKit の iOS アプリ ↔ Host PC 間通信は、REST API over HTTP �
 
 ---
 
+### 3. GET /screenshot
+
+**目的**: アプリ内スクリーンショット取得（Simulator・実機共通）  
+**リクエスト**: なし
+
+**実装**: `TestableServer` に注入された `screenshotProvider` クロージャを呼び出し、
+key window を PNG レンダリングして base64 で返す。
+`screenshotProvider` が未注入の場合は 503 を返す（DemoApp DEBUG ビルドでは常に注入済み）。
+
+**レスポンス** (success):
+```json
+{
+  "image_base64": "<PNG の base64 文字列>",
+  "format": "png"
+}
+```
+
+**レスポンス** (error / provider 未設定):
+```json
+{
+  "error": "screenshotProvider not configured"
+}
+```
+
+**HTTP ステータス**:
+- `200` — PNG データ取得成功
+- `500` — キャプチャ中に例外発生
+- `503` — `screenshotProvider` が未注入
+
+**設計上の注意**:
+- UIKit 依存（`UIGraphicsImageRenderer` など）はライブラリ側に持ち込まず、アプリ側（DemoApp）が closure を注入する。
+- MCP `ui_screenshot` は本エンドポイントを一次経路とし、loopback 接続失敗時のみ `simctl io booted screenshot`（Simulator 専用）へフォールバックする。
+
+---
+
 ## testID Naming Convention
 
 `testID` は階層的に命名し、アプリの View 構造を反映させます。

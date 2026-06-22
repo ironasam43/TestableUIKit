@@ -388,7 +388,7 @@ pytest E2E 追加（test_swiftui_new_components.py にて疎通確認）。
 | `ui_ping` | `GET /ping` | `{status: "ok"}` | サーバー死活確認 |
 | `ui_getState(testID)` | `POST /perform` getState | describedState 不透明 dict | 状態取得 → AI が期待値照合 |
 | `ui_perform(testID, command, params)` | `POST /perform` | describedState 不透明 dict | tap/setProperty/setEnabled 実行 |
-| `ui_screenshot` | `simctl io booted screenshot` | `{image_base64, format}` | 崩れ一次判定 |
+| `ui_screenshot` | `GET /screenshot`（一次）→ simctl フォールバック | `{image_base64, format}` | 崩れ一次判定（Simulator/実機両対応） |
 
 #### 設計原則
 
@@ -478,6 +478,32 @@ python3 mcp_server/testableui_mcp.py
 - DoD: `swift test` 96 PASS / pytest unit 42 PASS / commit `7d81160`
 
 **残余（VQ 送り）**: 実機 Wi-Fi 越し実通信の確認（実 iPhone ペアリング後）→ `docs/verify-queue.md` 参照
+
+---
+
+### D 拡張: `ui_screenshot` 実機対応 — provider 注入方式（実装済み・2026-06-23）
+
+**背景**: MCP live PoC（3/4 ツール実機駆動）で `ui_screenshot` のみ `simctl io booted screenshot`（Simulator 専用）依存で実機不可と判明。
+
+**採用方式（経路A）**: アプリ内キャプチャ → IPC 返却。新規エンドポイント `GET /screenshot` を `TestableServer` に追加し、アプリが自身のルート view を PNG レンダリング → base64 で HTTP 返却。`ui_screenshot()` はそのエンドポイントを一次経路として叩くだけにする。
+
+**screenshotProvider 注入設計**:
+- `TestableServer(port:host:registry:screenshotProvider:)` に optional な `screenshotProvider: (@MainActor () async -> Data?)?` を追加（既定 nil・後方互換維持）
+- `GET /screenshot` は provider を呼び出し base64 化して `{"image_base64":..., "format":"png"}` を返す。未注入時は `{"error":"screenshotProvider not configured"}` を返す（503）
+- ライブラリは closure の中身を一切知らない（UIKit 非依存・状態レス維持）
+- `DemoApp.swift` が key window キャプチャ closure（`UIGraphicsImageRenderer` ＋ `UIApplication.shared.connectedScenes` ルート view）を生成して注入（UIKit 依存は app 側に閉じる）
+
+**Python 側 `ui_screenshot()` フォールバック戦略**:
+- 一次経路: `GET /screenshot`（Simulator/実機共通）
+- フォールバック: host が loopback（`127.0.0.1` / `localhost`）かつ `/screenshot` endpoint が 4xx/5xx または接続失敗の場合のみ `simctl io booted screenshot` へ退避（Simulator での後方互換）
+- フォールバック判定は純粋関数（`should_use_simctl_fallback(host, error)`）で L1 テスト可能
+
+**L1 テスト追加**:
+- Swift: stub provider を注入した `TestableServer` に `GET /screenshot` を叩き、base64 を含む JSON が返ること（4 テスト）
+- Python: `build_screenshot_url`・フォールバック判定・passthrough（17 テスト追加）
+- DoD: `swift test` 100 PASS / pytest 59 PASS / commit `78716fd`
+
+**残余（VQ 送り）**: 実機（iPhone `192.168.0.181`）への DemoApp 再インストール後、`TESTABLE_IPC_HOST=192.168.0.181` で `ui_screenshot` を呼び実 PNG base64 が取得できるか確認 → `docs/verify-queue.md` 参照
 
 ---
 
