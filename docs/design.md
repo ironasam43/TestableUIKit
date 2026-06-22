@@ -496,7 +496,7 @@ python3 mcp_server/testableui_mcp.py
 **Python 側 `ui_screenshot()` フォールバック戦略**:
 - 一次経路: `GET /screenshot`（Simulator/実機共通）
 - フォールバック: host が loopback（`127.0.0.1` / `localhost`）かつ `/screenshot` endpoint が 4xx/5xx または接続失敗の場合のみ `simctl io booted screenshot` へ退避（Simulator での後方互換）
-- フォールバック判定は純粋関数（`should_use_simctl_fallback(host, error)`）で L1 テスト可能
+- フォールバック判定は純粋関数（`is_loopback_host(host)`、`mcp_server/ipc_helpers.py`）で L1 テスト可能
 
 **L1 テスト追加**:
 - Swift: stub provider を注入した `TestableServer` に `GET /screenshot` を叩き、base64 を含む JSON が返ること（4 テスト）
