@@ -90,9 +90,14 @@ jobs:
       - name: Install pytest dependencies
         run: python3 -m venv .venv && .venv/bin/pip install pytest requests
 
+      - name: Run pytest unit tests (no Simulator required)
+        run: |
+          echo "=== STEP: pytest unit ==="
+          .venv/bin/pytest Tests/unit/ -v
+
       - name: Run pytest IPC tests
         run: |
-          echo "=== STEP: pytest ==="
+          echo "=== STEP: pytest IPC ==="
           .venv/bin/pytest Tests/test_ipc.py Tests/test_swiftui_counter.py Tests/test_swiftui_new_components.py -v
 
       - name: Shutdown Simulator
