@@ -1,4 +1,4 @@
-最終更新：2026-06-22（Design D 下地 — LAN 越し IPC コード下地 完了）
+最終更新：2026-06-23（STEP D: DemoApp DEBUG 限定 LAN 公開 完了）
 
 # TestableUIKit 作業メモ
 
@@ -21,34 +21,25 @@
 - **STEP 2 追加実証 — 多様コンポーネント計装** ✅（2026-06-22）— **SPM 86 PASS（+48）・TextInput/OnOffSwitch/RangeSlider 新規計装**
 - **STEP 1.5 MCP ラッパー化** ✅（2026-06-22）— **4ツール独立 MCP サーバ実装・pytest unit 29 PASS・commit `5399849`**
 - **Design D 下地 — LAN 越し IPC コード下地** ✅（2026-06-22）— **SPM 96 PASS（+10）・pytest unit 42 PASS（+13）・commit `7d81160`**
+- **STEP D: DemoApp DEBUG 限定 LAN 公開** ✅（2026-06-23）— **`DemoApp/DemoApp.swift` を `#if DEBUG` 分岐で `host: "0.0.0.0"` 指定・SPM 96 PASS 維持・commit `b66a831`**
 
-## 現在地：Design D 下地 完了 → 実機ペアリング待ち
+## 現在地：STEP D 完了 → 実機再インストール・Wi-Fi 越し疎通確認待ち
 
-### ✅ Design D 下地 完了（2026-06-22）
-**TestableServer の bind ホスト指定 + クライアント接続先の環境変数上書き**
+### ✅ STEP D: DemoApp DEBUG 限定 LAN 公開 完了（2026-06-23）
+**`DemoApp/DemoApp.swift` の `#if DEBUG` 分岐実装**
 
-- `Sources/TestableUIKit/TestableServer.swift`:
-  - `init` に `host: String = "127.0.0.1"` 引数追加（後方互換）
-  - `NWParameters.requiredLocalEndpoint` で bind アドレスを制御（127.0.0.1=loopback / 0.0.0.0=全インターフェース）
-  - `public let host: String` プロパティとして外部公開
-  - `start()` の print 文を `host:port` 反映に修正
-- `mcp_server/ipc_helpers.py`:
-  - `resolve_ipc_host_port(env:)` 純粋関数追加（env 引数でテスト可）
-  - `TESTABLE_IPC_HOST` / `TESTABLE_IPC_PORT` 環境変数で接続先上書き可
-  - `ENV_IPC_HOST` / `ENV_IPC_PORT` 定数追加
-- `mcp_server/testableui_mcp.py`: `resolve_ipc_host_port()` で `_IPC_BASE` を動的生成
-- `Tests/conftest.py`: `BASE_URL` を `resolve_ipc_host_port()` 経由に変更
-- `run_test.py`: `IPC_BASE_URL` を `resolve_ipc_host_port()` 経由に変更
-- `Tests/TestableUIKitTests/TestableServerTests.swift`（新規 10 テスト）
-- `Tests/unit/test_mcp_helpers.py`（`TestResolveIpcHostPort` +13 テスト）
-- `docs/design.md` §D「コード下地（実装済み）」セクション追記
-- `docs/verify-queue.md` に「実機 Wi-Fi 越し実通信確認」起票
-- **DoD**: `swift test` 96 PASS / pytest unit 42 PASS / commit `7d81160`（未 push）
+- `DemoApp/DemoApp.swift`:
+  - `#if DEBUG` ブロック内で `TestableServer(port: 8888, host: "0.0.0.0", registry: registry)` を使用
+  - `#else`（Release）は従来の `TestableServer(port: 8888, registry: registry)`（既定 127.0.0.1）を維持
+  - ライブラリ API は変更不要（Design D 下地で実装済みの `host:` 引数を活用）
+- セキュリティ設計意図：Release ビルドで loopback に限定し、App Store 配布時の意図しない LAN 露出を防止
+- **DoD**: `swift build` PASS / `swift test` 96 PASS（回帰なし）/ commit `b66a831`（`wip:` 未 push）
+- `docs/verify-queue.md` の「Design D — 実機 Wi-Fi 越し実通信確認」起票に具体的な IP（`192.168.0.181`）と検証手順を追記
 
 ## 次ステップ候補
 1. **さらに多くのコンポーネント計装**: Picker / DatePicker / List など SwiftUI 標準コンポーネントの拡張
 2. **MCP live PoC 駆動実証（VQ）**: Simulator + DemoApp 起動 → `ui_ping`/`ui_getState`/`ui_perform`/`ui_screenshot` 4ツール疎通確認（verify-queue 参照）
-3. **実機テスト対応（Design D）**: コード下地 完了・実機ペアリング待ち（Provisioning Profile・デバイス UUID 登録・signing は Human が実施）
+3. **実機テスト対応（Design D）**: DEBUG LAN 公開 実装済み（`b66a831`）・Human が実機へ DEBUG ビルドを再インストール後、Mac 側で `export TESTABLE_IPC_HOST=192.168.0.181` を設定して `ui_ping` / `ui_getState` 等の疎通確認を実施（verify-queue 参照）
 
 ## 🔄 積み残し
 （なし）
