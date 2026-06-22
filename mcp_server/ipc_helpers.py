@@ -84,3 +84,32 @@ def build_simctl_screenshot_command(output_path: str) -> list:
         subprocess.run に渡せるコマンドリスト
     """
     return ["xcrun", "simctl", "io", "booted", "screenshot", output_path]
+
+
+def build_screenshot_url(host: str = DEFAULT_IPC_HOST, port: int = DEFAULT_IPC_PORT) -> str:
+    """GET /screenshot エンドポイントの URL を組み立てる。
+
+    Args:
+        host: 接続先ホスト（既定: "localhost"）
+        port: 接続先ポート（既定: 8888）
+
+    Returns:
+        "http://<host>:<port>/screenshot" 形式の URL 文字列
+    """
+    return f"{build_base_url(host=host, port=port)}/screenshot"
+
+
+def is_loopback_host(host: str) -> bool:
+    """host がループバックアドレスかどうかを判定する（純粋関数）。
+
+    simctl フォールバック判定に使用する。
+    loopback かつ /screenshot 不達の場合のみ simctl へフォールバックする。
+
+    Args:
+        host: IPC 接続先ホスト文字列
+
+    Returns:
+        True  = loopback（"localhost" / "127.0.0.1" / "::1"）
+        False = LAN IP など非 loopback（実機接続など）
+    """
+    return host in ("localhost", "127.0.0.1", "::1")

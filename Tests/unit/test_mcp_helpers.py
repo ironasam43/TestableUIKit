@@ -19,7 +19,9 @@ from ipc_helpers import (
     ENV_IPC_PORT,
     build_base_url,
     build_perform_payload,
+    build_screenshot_url,
     build_simctl_screenshot_command,
+    is_loopback_host,
     passthrough_state,
     resolve_ipc_host_port,
 )
@@ -283,3 +285,95 @@ class TestResolveIpcHostPort:
         host, port = resolve_ipc_host_port(env=env)
         url = build_base_url(host=host, port=port)
         assert url == "http://192.168.1.50:9001"
+
+
+# ================================================================
+# build_screenshot_url (Step 4 追加)
+# ================================================================
+
+
+class TestBuildScreenshotUrl:
+    def test_default_url(self):
+        """デフォルト値で localhost:8888/screenshot が返る"""
+        assert build_screenshot_url() == "http://localhost:8888/screenshot"
+
+    def test_custom_host(self):
+        """カスタムホストを指定できる"""
+        assert build_screenshot_url(host="192.168.0.181") == "http://192.168.0.181:8888/screenshot"
+
+    def test_custom_port(self):
+        """カスタムポートを指定できる"""
+        assert build_screenshot_url(port=9000) == "http://localhost:9000/screenshot"
+
+    def test_custom_host_and_port(self):
+        """ホストとポートを両方指定できる"""
+        assert build_screenshot_url(host="10.0.0.1", port=9999) == "http://10.0.0.1:9999/screenshot"
+
+    def test_ends_with_screenshot(self):
+        """/screenshot パスで終わる"""
+        url = build_screenshot_url()
+        assert url.endswith("/screenshot")
+
+    def test_returns_string(self):
+        """str を返す"""
+        assert isinstance(build_screenshot_url(), str)
+
+    def test_no_trailing_slash(self):
+        """/screenshot の後にスラッシュがない"""
+        url = build_screenshot_url()
+        assert not url.endswith("/screenshot/")
+
+    def test_consistent_with_base_url(self):
+        """build_base_url の結果に /screenshot を足したものと一致する"""
+        host = "192.168.1.1"
+        port = 9001
+        expected = f"{build_base_url(host=host, port=port)}/screenshot"
+        assert build_screenshot_url(host=host, port=port) == expected
+
+
+# ================================================================
+# is_loopback_host (Step 4 追加)
+# ================================================================
+
+
+class TestIsLoopbackHost:
+    def test_localhost_is_loopback(self):
+        """"localhost" はループバック"""
+        assert is_loopback_host("localhost") is True
+
+    def test_127_0_0_1_is_loopback(self):
+        """"127.0.0.1" はループバック"""
+        assert is_loopback_host("127.0.0.1") is True
+
+    def test_ipv6_loopback(self):
+        """"::1" はループバック"""
+        assert is_loopback_host("::1") is True
+
+    def test_lan_ip_is_not_loopback(self):
+        """LAN IP（192.168.x.x）はループバックでない"""
+        assert is_loopback_host("192.168.0.181") is False
+
+    def test_lan_ip_10_is_not_loopback(self):
+        """LAN IP（10.x.x.x）はループバックでない"""
+        assert is_loopback_host("10.0.0.1") is False
+
+    def test_empty_string_is_not_loopback(self):
+        """空文字列はループバックでない"""
+        assert is_loopback_host("") is False
+
+    def test_arbitrary_host_is_not_loopback(self):
+        """任意のホスト名はループバックでない"""
+        assert is_loopback_host("example.com") is False
+
+    def test_returns_bool(self):
+        """bool を返す"""
+        result = is_loopback_host("localhost")
+        assert isinstance(result, bool)
+
+    def test_loopback_fallback_logic(self):
+        """loopback のみ simctl フォールバック対象になる（フォールバック判定ロジック検証）"""
+        # 実機 IP → フォールバック不可
+        assert is_loopback_host("192.168.0.181") is False
+        # Simulator（loopback）→ フォールバック可
+        assert is_loopback_host("localhost") is True
+        assert is_loopback_host("127.0.0.1") is True

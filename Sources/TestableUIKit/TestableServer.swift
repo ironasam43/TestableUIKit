@@ -3,12 +3,18 @@ import Foundation
 
 @available(iOS 15.0, macOS 12.0, *)
 public final class TestableServer: @unchecked Sendable {
+  /// スクリーンショット PNG データを返すクロージャ型。
+  /// アプリ側（DemoApp 等）が注入することで、TestableServer は UIKit/window を知らなくて済む。
+  public typealias ScreenshotProvider = @MainActor @Sendable () async throws -> Data
+
   private let listener: NWListener
   private let queue = DispatchQueue(label: "testable.server", qos: .userInitiated)
   public let port: UInt16
   /// bind ホスト。"127.0.0.1"（既定）= ループバックのみ / "0.0.0.0" = 全インターフェース（LAN 公開）
   public let host: String
   private let registry: TestableRegistry
+  /// スクリーンショット取得クロージャ（nil = 未設定、GET /screenshot は 503 を返す）
+  private let screenshotProvider: ScreenshotProvider?
 
   private static let headerSeparator = Data([0x0D, 0x0A, 0x0D, 0x0A]) // \r\n\r\n
 
@@ -17,10 +23,13 @@ public final class TestableServer: @unchecked Sendable {
   ///   - host: bind アドレス（既定 "127.0.0.1" = ループバック限定。"0.0.0.0" で LAN 公開可）
   ///   - registry: コンポーネントの登録・検索に使う Registry インスタンス。
   ///               アプリ側で生成した同一インスタンスを渡すことでシングルトンを廃止する。
-  public init(port: UInt16 = 8888, host: String = "127.0.0.1", registry: TestableRegistry) throws {
+  ///   - screenshotProvider: スクリーンショット PNG を返すクロージャ。省略（nil）で GET /screenshot は 503。
+  ///                         アプリ側で key window キャプチャを実装して注入する（UIKit 依存を app 側に閉じる）。
+  public init(port: UInt16 = 8888, host: String = "127.0.0.1", registry: TestableRegistry, screenshotProvider: ScreenshotProvider? = nil) throws {
     self.port = port
     self.host = host
     self.registry = registry
+    self.screenshotProvider = screenshotProvider
     guard let nwPort = NWEndpoint.Port(rawValue: port) else {
       throw TestError.invalidParameters
     }
@@ -145,6 +154,19 @@ public final class TestableServer: @unchecked Sendable {
 
     if firstLine.contains("GET /ping") {
       return httpResp(200, #"{"status":"ok"}"#)
+    }
+
+    if firstLine.contains("GET /screenshot") {
+      guard let provider = screenshotProvider else {
+        return httpResp(503, #"{"error":"screenshotProvider not configured"}"#)
+      }
+      do {
+        let imageData = try await provider()
+        let base64 = imageData.base64EncodedString()
+        return httpResp(200, #"{"image_base64":"\#(base64)","format":"png"}"#)
+      } catch {
+        return httpResp(500, #"{"error":"screenshot capture failed"}"#)
+      }
     }
 
     if firstLine.contains("POST /perform") {

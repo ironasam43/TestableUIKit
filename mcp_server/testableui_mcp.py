@@ -31,7 +31,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from ipc_helpers import (
     build_base_url,
     build_perform_payload,
+    build_screenshot_url,
     build_simctl_screenshot_command,
+    is_loopback_host,
     passthrough_state,
     resolve_ipc_host_port,
 )
@@ -117,28 +119,54 @@ def ui_perform(testID: str, command: str, params: Optional[dict] = None) -> dict
 
 @mcp.tool()
 def ui_screenshot() -> dict:
-    """起動中の iOS Simulator のスクリーンショットを取得する（simctl io booted screenshot）。
+    """起動中の DemoApp（iOS 実機または Simulator）のスクリーンショットを取得する。
 
-    UI の崩れ・表示状態の一次判定に使用する。
+    取得経路（優先順）:
+    1. GET /screenshot（TestableServer のアプリ内キャプチャ）— 実機・Simulator 共通
+    2. simctl io booted screenshot（Simulator 専用フォールバック）
+       ※ 接続先が loopback かつ /screenshot エンドポイントに接続できない場合のみ
 
     Returns:
         {"image_base64": "<PNG の base64 文字列>", "format": "png"}
     """
+    screenshot_url = build_screenshot_url(host=_ipc_host, port=_ipc_port)
+    try:
+        resp = requests.get(screenshot_url, timeout=10)
+        if resp.status_code == 200:
+            return resp.json()
+        # HTTP エラー（503: provider 未設定 / 500: キャプチャ失敗 など）はそのまま例外化
+        raise RuntimeError(
+            f"GET /screenshot returned HTTP {resp.status_code}: {resp.text}"
+        )
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+        # 接続失敗 → loopback の場合のみ simctl フォールバックを試みる
+        if not is_loopback_host(_ipc_host):
+            raise RuntimeError(
+                f"GET /screenshot への接続に失敗しました (host={_ipc_host}): {e}\n"
+                "実機接続時は DemoApp が起動中で GET /screenshot エンドポイントが"
+                "有効であることを確認してください。"
+            ) from e
+        # loopback（Simulator）のみ simctl フォールバック
+        return _simctl_screenshot_fallback()
+
+
+def _simctl_screenshot_fallback() -> dict:
+    """Simulator 専用フォールバック: simctl io booted screenshot。
+
+    /screenshot エンドポイントに接続できず、かつ接続先が loopback の場合に呼ばれる。
+    """
     with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
         output_path = f.name
-
     try:
         cmd = build_simctl_screenshot_command(output_path)
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
         if result.returncode != 0:
             raise RuntimeError(f"simctl screenshot failed: {result.stderr}")
-
         with open(output_path, "rb") as f:
             image_data = base64.b64encode(f.read()).decode("utf-8")
     finally:
         if os.path.exists(output_path):
             os.unlink(output_path)
-
     return {"image_base64": image_data, "format": "png"}
 
 

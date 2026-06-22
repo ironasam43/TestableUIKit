@@ -89,4 +89,58 @@ final class TestableServerTests: XCTestCase {
     XCTAssertEqual(server.port, 8888)
     XCTAssertEqual(server.host, "127.0.0.1")
   }
+
+  // ----------------------------------------------------------------
+  // screenshotProvider 注入テスト（Step 4 追加）
+  // ----------------------------------------------------------------
+
+  // screenshotProvider なしで init が throw しない（後方互換）
+  func testInit_withoutProvider_doesNotThrow() {
+    XCTAssertNoThrow(try TestableServer(port: 8888, registry: registry),
+                     "screenshotProvider 省略で既存シグネチャが動く")
+  }
+
+  // screenshotProvider を渡しても init が throw しない
+  func testInit_withProvider_doesNotThrow() {
+    let provider: TestableServer.ScreenshotProvider = { Data("fake-png".utf8) }
+    XCTAssertNoThrow(try TestableServer(port: 8888, registry: registry, screenshotProvider: provider),
+                     "screenshotProvider 指定で init が throw しない")
+  }
+
+  // GET /screenshot: provider なし → 503 エラー JSON
+  func testGetScreenshot_withoutProvider_returns503() async throws {
+    let testPort: UInt16 = 9875
+    let server = try TestableServer(port: testPort, registry: registry)
+    server.start()
+    try await Task.sleep(nanoseconds: 200_000_000)
+
+    let url = URL(string: "http://127.0.0.1:\(testPort)/screenshot")!
+    let (data, response) = try await URLSession.shared.data(from: url)
+    let httpResp = try XCTUnwrap(response as? HTTPURLResponse)
+    XCTAssertEqual(httpResp.statusCode, 503, "provider 未設定時は 503 を返す")
+
+    let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+    XCTAssertNotNil(json?["error"], "エラー JSON に 'error' キーが含まれる")
+  }
+
+  // GET /screenshot: stub provider → 200 + base64
+  func testGetScreenshot_withStubProvider_returnsBase64() async throws {
+    let testPort: UInt16 = 9876
+    let fakeImageData = Data("fake-png-data-for-test".utf8)
+    let provider: TestableServer.ScreenshotProvider = { fakeImageData }
+
+    let server = try TestableServer(port: testPort, registry: registry, screenshotProvider: provider)
+    server.start()
+    try await Task.sleep(nanoseconds: 200_000_000)
+
+    let url = URL(string: "http://127.0.0.1:\(testPort)/screenshot")!
+    let (data, response) = try await URLSession.shared.data(from: url)
+    let httpResp = try XCTUnwrap(response as? HTTPURLResponse)
+    XCTAssertEqual(httpResp.statusCode, 200, "stub provider 指定時は 200 を返す")
+
+    let json = try JSONDecoder().decode([String: String].self, from: data)
+    XCTAssertEqual(json["format"], "png", "format フィールドが 'png'")
+    XCTAssertEqual(json["image_base64"], fakeImageData.base64EncodedString(),
+                   "provider が返した Data が base64 で返る")
+  }
 }

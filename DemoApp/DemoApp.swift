@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import TestableUIKit
 
 @main
@@ -28,9 +29,34 @@ struct RootView: View {
       .task {
         do {
           // Server にも同じ registry を注入してシングルトンを廃止
-          // DEBUG ビルドは LAN 公開（0.0.0.0）、Release は loopback（127.0.0.1）維持
+          // DEBUG ビルドは LAN 公開（0.0.0.0）＋ スクリーンショット provider 注入
+          // Release は loopback（127.0.0.1）・provider なし
           #if DEBUG
-          let s = try TestableServer(port: 8888, host: "0.0.0.0", registry: registry)
+          // key window を PNG キャプチャする closure（UIKit 依存を app 側に閉じる）
+          let screenshotProvider: TestableServer.ScreenshotProvider = { @MainActor in
+            guard let windowScene = UIApplication.shared.connectedScenes
+              .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
+              let window = windowScene.windows.first(where: { $0.isKeyWindow })
+                        ?? windowScene.windows.first else {
+              throw NSError(
+                domain: "TestableUIKit.Screenshot", code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "key window が取得できません"]
+              )
+            }
+            let renderer = UIGraphicsImageRenderer(bounds: window.bounds)
+            let image = renderer.image { _ in
+              window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
+            }
+            guard let data = image.pngData() else {
+              throw NSError(
+                domain: "TestableUIKit.Screenshot", code: -2,
+                userInfo: [NSLocalizedDescriptionKey: "PNG 変換に失敗しました"]
+              )
+            }
+            return data
+          }
+          let s = try TestableServer(port: 8888, host: "0.0.0.0", registry: registry,
+                                     screenshotProvider: screenshotProvider)
           #else
           let s = try TestableServer(port: 8888, registry: registry)
           #endif
