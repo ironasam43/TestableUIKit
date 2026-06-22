@@ -40,7 +40,7 @@ def assert_on_off_switch_state(state: dict):
 
 def assert_range_slider_state(state: dict):
     """RangeSlider の describedState が期待するキーを満たすことを検証する"""
-    expected_keys = {"value", "minValue", "maxValue"}
+    expected_keys = {"value", "minValue", "maxValue", "step"}
     assert set(state.keys()) == expected_keys, (
         f"RangeSlider: Expected keys {expected_keys}, got {set(state.keys())}"
     )
