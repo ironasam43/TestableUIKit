@@ -26,9 +26,7 @@ struct RootView: View {
         do {
           // Server にも同じ registry を注入してシングルトンを廃止
           let s = try TestableServer(port: 8888, registry: registry)
-          // loginButton は .testable() 未移行のため直接 register（STEP 3 スコープ外・次タスク候補）
-          await registry.register(loginButton)
-          // counter は CounterView に付与した .testable(counter) で自動登録
+          // loginButton と counter は各ビューに付与した .testable() で自動登録
           s.start()
           server = s
           serverRunning = true
@@ -81,6 +79,7 @@ struct ContentView: View {
           .font(.caption2)
           .foregroundColor(.secondary)
       }
+      .testable(loginButton)
 
       // Counter コンポーネント（.testable で自動登録）
       CounterView(counter: counter)

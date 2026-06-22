@@ -62,14 +62,15 @@
 - CI pytest **31 PASS**（test_ipc.py 10 + test_swiftui_counter.py 21）
 - commit: `f3a36ff`、push: `7f5be89..f3a36ff`（push 済み）
 
+## ✅ 実装完了項目
+1. **STEP 3/4 push + CI 確認** ✅: commit `1b23042`（STEP 3）＋ `3718c98`（STEP 4）を origin/main へ push → CI pytest 31 PASS 維持（2026-06-22）
+2. **STEP 4.5 loginButton ViewModifier 移行** ✅（2026-06-22）: DemoApp.swift の手動 `registry.register(loginButton)` を削除、ContentView の loginButton VStack に `.testable(loginButton)` 付与。Counter と登録方式統一。SPM `swift test` 38 PASS 維持。
+
 ## 次ステップ候補
-1. **push + CI 確認**: commit `1b23042`（STEP 3）＋ `3718c98`（STEP 4）を origin/main へ push → CI pytest 31 維持を確認
-2. **STEP 2 追加実証**: 3個以上 ＋ Picker/TextField など多様コンポーネント計装
-3. **loginButton を `.testable()` ViewModifier へ移行**: DemoApp.swift の手動 `registry.register(loginButton)` を ViewModifier 化（STEP 4 スコープ外として分離済み）
-4. **STEP 1.5 MCP ラッパー化**: Python → Swift 統一化
+1. **STEP 2 追加実証**: 3個以上 ＋ Picker/TextField など多様コンポーネント計装
+2. **STEP 1.5 MCP ラッパー化**: Python → Swift 統一化
 
 ## 🔄 積み残し
-- ~~push 待ち~~ ✅ 解消（2026-06-22）: STEP 3/4 全コミット push 済み（`6151ae1` まで）・CI run #27928282529 全3ジョブ PASS・pytest 31 維持
 - **MCP ラッパー化（STEP 1.5）**: Dev/ `docs/test-strategy.md` で差し込み案がレビュー待ち中。採否は別途決定
 
 ---

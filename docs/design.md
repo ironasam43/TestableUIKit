@@ -355,6 +355,10 @@ Registry を View ツリーへ注入する方式を STEP 4 で実装。
 
 **工数**: ① 完了（STEP 3）/ ② 完了（STEP 4）
 
+**工数補追（loginButton 移行）**: `DemoApp` の `loginButton` コンポーネント（testID: `scene.demo.login.button`）も
+`.testable(loginButton)` ViewModifier へ移行。RootView の `.task` 内の手動 `await registry.register(loginButton)` を廃止し、
+Counter と登録方式を統一。実装完了（STEP 4.5）。
+
 ---
 
 ### D: 実機テスト対応
