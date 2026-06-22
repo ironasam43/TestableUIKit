@@ -28,7 +28,12 @@ struct RootView: View {
       .task {
         do {
           // Server にも同じ registry を注入してシングルトンを廃止
+          // DEBUG ビルドは LAN 公開（0.0.0.0）、Release は loopback（127.0.0.1）維持
+          #if DEBUG
+          let s = try TestableServer(port: 8888, host: "0.0.0.0", registry: registry)
+          #else
           let s = try TestableServer(port: 8888, registry: registry)
+          #endif
           // loginButton と counter は各ビューに付与した .testable() で自動登録
           s.start()
           server = s
