@@ -20,7 +20,18 @@
 - STEP 4 TestableRegistry シングルトン廃止・Environment キー注入 ✅（2026-06-22）— **SPM 38 PASS（+1）・push 済み（`3718c98`/`6151ae1`、`70eee1d..6151ae1`）・CI pytest 31 PASS**
 - **STEP 2 追加実証 — 多様コンポーネント計装** ✅（2026-06-22）— **SPM 86 PASS（+48）・TextInput/OnOffSwitch/RangeSlider 新規計装・pytest E2E 追加・docs 更新**
 
-## 現在地：STEP 2 追加実証 完全クローズ（実装済み・機械検証 PASS）→ 次ステップ選択へ
+## 現在地：STEP 2 追加実証 完全クローズ＋CI green 復帰（main green 確定）→ 次ステップ選択へ
+
+### ✅ pytest E2E 回帰 3 連修正 → main green 復帰（2026-06-22）
+- `c71bf1a`（STEP 2 追加実証）push 後、新規 pytest E2E（test_swiftui_new_components.py）が CI で red に。初実走の IPC E2E が機械検証として機能し、**3 件のテスト専用バグ**を順次検出・修正（フレームワーク本体は全工程不変）。
+  1. `8e5695b`: fixture 3 種（text_input/on_off_switch/range_slider_perform）を counter_perform 契約へ統一（success/state エンベロープ取り違え → 生 describedState dict + raise_for_status）→ 35/37
+  2. `0ccf6d4`: `assert_range_slider_state` の expected_keys に `step` 追加（実 describedState は4キー {value,minValue,maxValue,step}）→ 36/37
+  3. `20896b1`: `test_range_slider_reset` 期待値を実装の中央値リセットセマンティクス `(maxValue−minValue)/2+minValue`（デフォルト 50）へ修正（テストの minValue 期待が誤り）→ **37 PASS**
+- **CI run #17（`27937732375`）success 確定**: pytest **37 passed**（test_ipc 10 + counter 21 + new_components 6）・全3ジョブ success（Build iOS DemoApp / Swift Package Unit Tests / IPC Integration Tests）。
+- SPM `swift test` 86 PASS は全工程で不変（本体未変更）。VQ 起票なし（CI pytest で機械検証完結）。
+- **教訓**: ローカル swift test では IPC E2E が走らない（常駐サーバ不在）＝ CI 専用レーン。新規 E2E はテスト側の応答契約・期待値ズレが出やすく、CI 初実走が検証の要。
+
+
 
 ### ✅ STEP 4 完了（2026-06-22）：TestableRegistry シングルトン廃止・Environment キー注入（Design C ②）
 - **`Sources/TestableUIKit/AnyTestable.swift`**:
@@ -75,6 +86,7 @@
    - docs/design.md・history.md・handoff.md 更新
    - SPM `swift test` **86 PASS** 確認
    - VQ 起票なし（機械検証で完結）
+   - **CI 統合完了（2026-06-22）**: 新規 pytest E2E の回帰 3 件（`8e5695b`/`0ccf6d4`/`20896b1`）を修正し CI **37 PASS** green 復帰（run #17 success・上記「現在地」参照）
 
 ## 次ステップ候補
 1. **さらに多くのコンポーネント計装**: Picker / DatePicker / List など SwiftUI 標準コンポーネントの拡張
