@@ -16,39 +16,48 @@
 - STEP 1 pytest 昇格 / IPC Response schema 確定 / NWConnection 修正 ✅ — **CI 全3ジョブ PASS・push 済み**
 - STEP 2 実 SwiftUI コンポーネント計装 ✅（Counter）— **SPM 33 PASS・CI push 済み**
 - STEP 2 CI 統合 ✅（2026-06-22）— **CI pytest 31 PASS（test_ipc.py 10 + test_swiftui_counter.py 21）**
+- STEP 3 DX整備 ✅（2026-06-22）— **SPM 37 PASS（+4）・ローカルコミット済み・push 待ち**
 
-## 現在地：STEP 2 CI 統合完了 → STEP 3（DX整備）または STEP 2 追加実証へ
+## 現在地：STEP 3 完了 → push + CI 確認 → 次ステップ選択へ
+
+### ✅ STEP 3 完了（2026-06-22）：`.testable(_:)` ViewModifier 抽象化（Design C ①）
+- **`Sources/TestableUIKit/TestableView.swift` 新規追加**:
+  - `TestableRegistrationModifier: ViewModifier`（`.task` 内で `await TestableRegistry.shared.register` を自動呼び出し）
+  - `View` 拡張 `.testable(_ testable: AnyTestable)`（`@testable import` との命名衝突を回避するメソッド構文を採用）
+  - `@available(iOS 15.0, macOS 13.0, *)`
+- **`DemoApp/DemoApp.swift` 移行**:
+  - Counter の手動 `await TestableRegistry.shared.register(counter)` を削除
+  - `CounterView(counter: counter).testable(counter)` に変更（testID `scene.demo.counter` 維持・後方互換）
+- **`Tests/TestableUIKitTests/TestableRegistryTests.swift` 新規追加**（L1 DoD ゲート②）:
+  - register→find round-trip / 未登録ID→nil / 再登録上書き / describedState の 4ケース
+- **`docs/design.md` セクション C 更新**:
+  - ① ViewModifier 実装済み（API・予約語回避の経緯）
+  - ② EnvironmentObject/Registry 注入は次タスクへ deferred と明記
+- **完了ゲート通過**: `swift build` ✅ / `swift test` **37 PASS** ✅ / commit `1b23042`
+- **VQ 起票なし**（IPC E2E は CI pytest で機械検証済み）
 
 ### ✅ STEP 2 CI 統合完了（2026-06-22）
 - `.github/workflows/ci.yml` の pytest-ipc ジョブに `test_swiftui_counter.py` を追加
 - GitHub Actions CI（run #27926198101）で **31 PASS**:
   - `test_ipc.py` 10テスト ✅ / `test_swiftui_counter.py` 21テスト ✅
-- Counter IPC（getState/increment/decrement/reset/setProperty/状態遷移）の機械検証完了
-- VQ の STEP 2 Counter pytest CI 実行 → 消し込み済み
-- **件数ドリフト修正**: 文書記載「30テスト」→ 実体「21テスト」（test_swiftui_counter.py）
 - commit: `f3a36ff`、push: `7f5be89..f3a36ff`
 
 ### ✅ STEP 2 完了（2026-06-22）：実 SwiftUI コンポーネント計装
-- **`Counter` コンポーネント計装完了**（testID: `scene.demo.counter`）：
-  - `Sources/TestableUIKit/CounterCore.swift` 新規追加（純粋関数: makeCounterDescribedState / applyIncrement / applyDecrement / applyCounterReset / applyCounterSetProperty）
-  - `DemoApp/CounterView.swift` 新規追加（Counter クラス `@MainActor final class Counter: ObservableObject, AnyTestable` ＋ CounterView SwiftUI View）
-  - `DemoApp/DemoApp.swift` 修正：`register` に `await` 付与（actor 呼び出し修正）＋ Counter を Registry 登録・ContentView に追加
-  - `Tests/test_swiftui_counter.py` 新規追加（21テスト：getState/increment/decrement/reset/setProperty/状態遷移シナリオ）
-- **完了ゲート通過**: SPM `swift test` 33 PASS ＋ Xcode iOS Simulator（iPhone 16e）ビルド BUILD SUCCEEDED
+- `Counter` コンポーネント（testID: `scene.demo.counter`）計装済み
+- CounterCore.swift / CounterView.swift / test_swiftui_counter.py 追加
 
-### ✅ STEP 1 完了・push 済み（pytest 昇格 / IPC Response schema 確定 / NWConnection 修正）
-- `Tests/conftest.py` / `Tests/test_ipc.py` で run_test.py を pytest として正式化（commit `1e42817` / `b0d978d`）
-- tap / setProperty の Response schema を確定・`docs/ipc-protocol.md` に明文化（commit `1e42817`）
-- TCP ソケットの不完全受信対策修正（commit `7f5be89`）
-- **GitHub push 完了**: 上記 3 commit が origin/main に統合済み
+### ✅ STEP 1 完了・push 済み
+- pytest 昇格 / IPC Response schema 確定 / NWConnection 修正（commit `1e42817`〜`7f5be89`）
 
 ## 次ステップ候補
-1. **STEP 3（DX整備）**: ViewModifier `@testable(_:)` 抽象化（Design C 本丸）
-2. **STEP 2 追加実証**: 3個以上 ＋ Picker/TextField など多様コンポーネント
-3. **STEP 1.5 MCP ラッパー化**: Python → Swift 統一化（Design C セクション後追い検討）
+1. **push + CI 確認**: `1b23042` を origin/main へ push → CI pytest 31 維持を確認（STEP 3 の最終確認）
+2. **STEP 4（EnvironmentObject 注入）**: グローバルシングルトン廃止・Registry を EnvironmentObject/Environment で View ツリーへ注入（Design C ② deferred）
+3. **STEP 2 追加実証**: 3個以上 ＋ Picker/TextField など多様コンポーネント計装
+4. **STEP 1.5 MCP ラッパー化**: Python → Swift 統一化
 
 ## 🔄 積み残し
-- **MCP ラッパー化（STEP 1.5）**: Dev/ `docs/test-strategy.md` で差し込み案がレビュー待ち中。採否は別途決定（Design C セクションで後追い検討）
+- **push 待ち**: commit `1b23042`（STEP 3）を origin/main へ push → Human の明示指示で
+- **MCP ラッパー化（STEP 1.5）**: Dev/ `docs/test-strategy.md` で差し込み案がレビュー待ち中。採否は別途決定
 
 ---
 
