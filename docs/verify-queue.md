@@ -5,7 +5,7 @@
 
 ## 未確認
 
-（なし）
+- [ ] **STEP 1.5 MCP live PoC 駆動実証**: Simulator で DemoApp を起動し、`python3 mcp_server/testableui_mcp.py` を起動 → `ui_ping` で `{"status":"ok"}` が返ること・`ui_getState("scene.demo.counter")` で describedState dict が返ること・`ui_perform("scene.demo.counter","increment",{})` で count が +1 されること・`ui_screenshot` でスクリーンショットが保存されることの4点を確認。手順：① `xcrun simctl boot` → ② `xcodebuild` で DemoApp ビルド＆インストール → ③ `xcrun simctl launch` → ④ `python3 mcp_server/testableui_mcp.py` 起動 → ⑤ MCP inspector か Python client で上記4ツールを順実行。合格：4ツール全て正常レスポンス返却。
 
 ## 機械検証済み・消し込み
 

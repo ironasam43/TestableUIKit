@@ -375,6 +375,63 @@ pytest E2E 追加（test_swiftui_new_components.py にて疎通確認）。
 
 ---
 
+### E: MCP ラッパー（STEP 1.5 実装済み・2026-06-22）
+
+**概要**: TestableUIKit の HTTP IPC（localhost:8888）を MCP tool で薄くラップし、Claude が実行中の iOS UI を直接駆動・describedState を構造化検査できるようにする独立 MCP サーバ。
+
+**実装場所**: `mcp_server/`（TestableUIKit 同梱・ProjectDeck 非同居）
+
+#### 公開する MCP tool（4本）
+
+| MCP tool | ラップ先 | 返り値 | 用途 |
+|---|---|---|---|
+| `ui_ping` | `GET /ping` | `{status: "ok"}` | サーバー死活確認 |
+| `ui_getState(testID)` | `POST /perform` getState | describedState 不透明 dict | 状態取得 → AI が期待値照合 |
+| `ui_perform(testID, command, params)` | `POST /perform` | describedState 不透明 dict | tap/setProperty/setEnabled 実行 |
+| `ui_screenshot` | `simctl io booted screenshot` | `{image_base64, format}` | 崩れ一次判定 |
+
+#### 設計原則
+
+- **薄いラッパー**: ビジネスロジック不持ち・HTTP 中継のみ
+- **describedState は不透明 dict**: キー固定を前提にしない（STEP2 前方互換）
+- **状態レス**: MCP サーバー自体は状態を持たない
+- **UIテスト時のみ起動**: 常駐しない構成（`python3 mcp_server/testableui_mcp.py` で起動）
+
+#### ファイル構成
+
+```
+mcp_server/
+  ipc_helpers.py        # 純粋ヘルパー（外部依存なし・L1 テスト可）
+  testableui_mcp.py     # FastMCP サーバー実装
+  requirements.txt      # mcp>=1.0.0, requests>=2.28.0
+Tests/unit/
+  conftest.py           # autouse reset_state の no-op override
+  test_mcp_helpers.py   # L1 pytest 29テスト（Simulator 不要）
+```
+
+#### 起動方法
+
+```bash
+# 前提: DemoApp が Simulator 上で起動済み（localhost:8888 リッスン中）
+cd projects/TestableUIKit
+.venv/bin/pip install -r mcp_server/requirements.txt
+python3 mcp_server/testableui_mcp.py
+```
+
+#### 実現するテストループ
+
+```
+ビルド → Simulator 起動 → [AI] ui_perform で操作 → ui_getState で状態 assert
+       → ui_screenshot で崩れ一次判定 → 異常候補だけ人間（L5）へ
+```
+
+#### スコープ外（将来課題）
+
+- `GET /components`（testID 一覧取得）: TestableServer 側に追加が必要→ STEP3 と合流
+- 補助 MCP（`run_tests(scheme)` 等）: Bash で代替可・優先度低
+
+---
+
 ### D: 実機テスト対応
 
 **概要**: iOS Simulator から実 iPhone での対応拡張

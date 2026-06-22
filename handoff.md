@@ -1,4 +1,4 @@
-最終更新：2026-06-22
+最終更新：2026-06-22（STEP 1.5 MCP ラッパー化 完了）
 
 # TestableUIKit 作業メモ
 
@@ -19,8 +19,9 @@
 - STEP 3 DX整備 ✅（2026-06-22）— **SPM 37 PASS（+4）・push 済み（`1b23042`/`70eee1d`）**
 - STEP 4 TestableRegistry シングルトン廃止・Environment キー注入 ✅（2026-06-22）— **SPM 38 PASS（+1）・push 済み（`3718c98`/`6151ae1`、`70eee1d..6151ae1`）・CI pytest 31 PASS**
 - **STEP 2 追加実証 — 多様コンポーネント計装** ✅（2026-06-22）— **SPM 86 PASS（+48）・TextInput/OnOffSwitch/RangeSlider 新規計装・pytest E2E 追加・docs 更新**
+- **STEP 1.5 MCP ラッパー化** ✅（2026-06-22）— **4ツール独立 MCP サーバ実装・pytest unit 29 PASS・commit `5399849`**
 
-## 現在地：STEP 2 追加実証 完全クローズ＋CI green 復帰（main green 確定）→ 次ステップ選択へ
+## 現在地：STEP 1.5 MCP ラッパー化 完了 → 次ステップ選択へ
 
 ### ✅ pytest E2E 回帰 3 連修正 → main green 復帰（2026-06-22）
 - `c71bf1a`（STEP 2 追加実証）push 後、新規 pytest E2E（test_swiftui_new_components.py）が CI で red に。初実走の IPC E2E が機械検証として機能し、**3 件のテスト専用バグ**を順次検出・修正（フレームワーク本体は全工程不変）。
@@ -90,11 +91,11 @@
 
 ## 次ステップ候補
 1. **さらに多くのコンポーネント計装**: Picker / DatePicker / List など SwiftUI 標準コンポーネントの拡張
-2. **STEP 1.5 MCP ラッパー化**: Python → Swift 統一化
+2. **MCP live PoC 駆動実証（VQ）**: Simulator + DemoApp 起動 → `ui_ping`/`ui_getState`/`ui_perform`/`ui_screenshot` 4ツール疎通確認（verify-queue 参照）
 3. **実機テスト対応（Design D）**: iOS Simulator から実 iPhone へ拡張
 
 ## 🔄 積み残し
-- **MCP ラッパー化（STEP 1.5）**: Dev/ `docs/test-strategy.md` で差し込み案がレビュー待ち中。採否は別途決定
+（なし）
 
 ---
 
