@@ -12,15 +12,17 @@ struct TestableUIApp: App {
 
 struct RootView: View {
   @StateObject private var loginButton = LoginButton()
+  @StateObject private var counter = Counter()
   @State private var server: TestableServer?
   @State private var serverRunning = false
 
   var body: some View {
-    ContentView(loginButton: loginButton, serverRunning: $serverRunning)
+    ContentView(loginButton: loginButton, counter: counter, serverRunning: $serverRunning)
       .task {
         do {
           let s = try TestableServer(port: 8888)
-          TestableRegistry.shared.register(loginButton)
+          await TestableRegistry.shared.register(loginButton)
+          await TestableRegistry.shared.register(counter)
           s.start()
           server = s
           serverRunning = true
@@ -34,6 +36,7 @@ struct RootView: View {
 
 struct ContentView: View {
   @ObservedObject var loginButton: LoginButton
+  @ObservedObject var counter: Counter
   @Binding var serverRunning: Bool
 
   var body: some View {
@@ -52,6 +55,7 @@ struct ContentView: View {
       .background(Color(.systemGray6))
       .cornerRadius(8)
 
+      // LoginButton コンポーネント
       VStack(spacing: 12) {
         Button(action: {
           Task { @MainActor in
@@ -72,6 +76,9 @@ struct ContentView: View {
           .foregroundColor(.secondary)
       }
 
+      // Counter コンポーネント
+      CounterView(counter: counter)
+
       Text("Run in Terminal:\npython3 run_test.py")
         .font(.caption)
         .foregroundColor(.secondary)
@@ -85,5 +92,9 @@ struct ContentView: View {
 }
 
 #Preview {
-  ContentView(loginButton: LoginButton(), serverRunning: .constant(true))
+  ContentView(
+    loginButton: LoginButton(),
+    counter: Counter(),
+    serverRunning: .constant(true)
+  )
 }

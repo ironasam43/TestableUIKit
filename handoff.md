@@ -1,4 +1,4 @@
-最終更新：2026-06-18
+最終更新：2026-06-22
 
 # TestableUIKit 作業メモ
 
@@ -13,34 +13,31 @@
 - M-1 IPC層検証 ✅ / M-2 iOS App UI連動 ✅ / M-3a xcodegen 移行 ✅
 - M-3-0 git cleanup ✅ / M-3-1 OS·device matrix 確定（iOS 16.0 / iPhone 16 + iPad Air）✅ / M-3-3 CI/CD 統合 ✅
 - M-4 setProperty 拡張（isEnabled/title/isHidden/alpha/backgroundColor）✅ — **合計 23 tests PASS**
+- STEP 1 pytest 昇格 / IPC Response schema 確定 / NWConnection 修正 ✅ — **CI 全3ジョブ PASS・push 済み**
 
-## 現在地：STEP 1 完了・push 済み ✅ → STEP 2（実 SwiftUI コンポーネント計装）へ
+## 現在地：STEP 2 完了 → STEP 3（DX整備）または STEP 2 追加実証へ
 
-### ✅ 完了済み
-- Phase 0 PoC `probe-simulator` job 修正完了（commit `5de08ca` + `0f23586`）
-  - commit `5de08ca`：`--terminate-running-process` フラグ追加、process check を `launchctl list | grep com.testable.TestableUIKitDemo` に修正
-  - commit `0f23586`：iPhone UDID での正確なデバイス選択（.name → .udid、startswith("iPhone") フィルタ）、bootstatus コマンドから非存在オプション `--timeout 300` を削除
-  - **CI 全3ジョブ ✅ PASS**: Swift Package Unit Tests / Build iOS DemoApp / Phase 0 PoC - Simulator Boot, App Launch & Loopback
-- 実 API 仕様を `run_test.py` 全行照合で確定：
-  - `GET /ping` → `{"status":"ok"}`
-  - `POST /perform` body: `{"testID","commandName":"getState"|"tap"|"setProperty","parameters":{}|{"key","value"}}`
-  - 単独エンドポイント（/setProperty 等）は存在しない。すべて `POST /perform` で discriminate
-  - Response schema 確定済み（getState / tap / setProperty とも）→ `docs/ipc-protocol.md` に明文化
-- **実用化ロードマップを正式ドキュメント化** ✅
-  - `docs/roadmap.md` 新規作成：実用化の定義、現在地（到達済み）、4ステップ（STEP 1-4）、推奨ルートを明文化
-  - STEP 1（テストランナー昇格）→ STEP 2（SwiftUI対応）→ STEP 3（DX整備）→ STEP 4（実機対応）の依存順・工数・完了条件を確定
-  - 既存の design.md A/B/C/D 区分との整合確認：STEP 1/2/4 は B/C/D に1対1対応、STEP 3 は新規カテゴリ（対応設計書は追って作成）
+### ✅ STEP 2 完了（2026-06-22）：実 SwiftUI コンポーネント計装
+- **`Counter` コンポーネント計装完了**（testID: `scene.demo.counter`）：
+  - `Sources/TestableUIKit/CounterCore.swift` 新規追加（純粋関数: makeCounterDescribedState / applyIncrement / applyDecrement / applyCounterReset / applyCounterSetProperty）
+  - `DemoApp/CounterView.swift` 新規追加（Counter クラス `@MainActor final class Counter: ObservableObject, AnyTestable` ＋ CounterView SwiftUI View）
+  - `DemoApp/DemoApp.swift` 修正：`register` に `await` 付与（actor 呼び出し修正）＋ Counter を Registry 登録・ContentView に追加
+  - `Tests/test_swiftui_counter.py` 新規追加（30テスト：getState/increment/decrement/reset/setProperty/状態遷移シナリオ）
+- **完了ゲート通過**: SPM `swift test` 33 PASS ＋ Xcode iOS Simulator（iPhone 16e）ビルド BUILD SUCCEEDED
+- **未 push**（ローカルコミット済み）
 
 ### ✅ STEP 1 完了・push 済み（pytest 昇格 / IPC Response schema 確定 / NWConnection 修正）
-- **pytest 昇格**: `Tests/conftest.py` / `Tests/test_ipc.py` で run_test.py を pytest として正式化（commit `1e42817` / `b0d978d`）
-- **IPC Response schema 確定**: tap / setProperty の Response schema を確定・`docs/ipc-protocol.md` に明文化（commit `1e42817`）
-- **NWConnection 部分受信修正**: TCP ソケットの不完全受信対策修正（commit `7f5be89`）
+- `Tests/conftest.py` / `Tests/test_ipc.py` で run_test.py を pytest として正式化（commit `1e42817` / `b0d978d`）
+- tap / setProperty の Response schema を確定・`docs/ipc-protocol.md` に明文化（commit `1e42817`）
+- TCP ソケットの不完全受信対策修正（commit `7f5be89`）
 - **GitHub push 完了**: 上記 3 commit が origin/main に統合済み
 
-## 次ステップ：STEP 2（実 SwiftUI コンポーネント計装）
-- 目的：STEP 1 で確立した pytest テストランナーを使い、実際の SwiftUI コンポーネント（CLIDemoLoginButton → SwiftUI View）を計装し、エンドツーエンド統合テストの実行可能性を検証する
-- ゲート：STEP 1 完了・ブロッカーなし ✅（pytest 環境整備済み、IPC protocol 確定済み）
-- 期待結果：SwiftUI コンポーネント 1-2 個の計装完了＋対応する pytest テストの実行・PASS
+## 次ステップ候補
+1. **STEP 2 CI 統合**（push ＋ CI で test_swiftui_counter.py 実行）: シミュレータ上の Counter コンポーネントに対して pytest 30テスト が CI で PASS することを確認
+2. **STEP 3（DX整備）**: ViewModifier `@testable(_:)` 抽象化（Design C 本丸）
+3. **STEP 2 追加実証**: 3個以上 ＋ Picker/TextField など多様コンポーネント
+4. **STEP 1.5 MCP ラッパー化**: Python → Swift 統一化（Design C セクション後追い検討）
 
 ## 🔄 積み残し
-- **MCP ラッパー化（STEP 1.5）**: Dev/ `docs/test-strategy.md` で IPC テスト戦略全体への MCP ラッパー化（Python → Swift 統一化）の差し込み案がレビュー待ち中。STEP 2 着手時点での採否は別途決定（Design C セクションで後追い検討）
+- **MCP ラッパー化（STEP 1.5）**: Dev/ `docs/test-strategy.md` で差し込み案がレビュー待ち中。現行 pytest ベースで STEP 2 完了済み。採否は別途決定（Design C セクションで後追い検討）
+- **STEP 2 pytest CI 実行検証**: `test_swiftui_counter.py` の CI ジョブ追加は未実施（ローカルビルドのみ）。CI push で probe-simulator job がどう対応するか要確認。
