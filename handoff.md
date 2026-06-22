@@ -1,4 +1,4 @@
-最終更新：2026-06-23（`ui_screenshot` 実機対応実装済み — GET /screenshot + screenshotProvider 注入・swift test 100 PASS・pytest 59 PASS・commit `78716fd`）
+最終更新：2026-06-23（`ui_screenshot` 実機対応 push 済み・CI 全3ジョブ green — Auditor [WARN] 解消（design.md 純関数名を `is_loopback_host` へ整合・commit `5309a5d`）。実装は `78716fd`/docs `11c1238`。残：実機 PNG 取得確認のみ）
 
 # TestableUIKit 作業メモ
 
@@ -42,7 +42,7 @@
 
 ## 🔄 積み残し
 - **VQ 未確認 1 件（筆頭）**: `ui_screenshot` の実機での実 PNG 取得確認（DemoApp 再インストール後・`TESTABLE_IPC_HOST=192.168.0.181` で `ui_screenshot` → PNG base64 確認）。実装コード（`78716fd`）は完了済み
-- commit `78716fd` は未 push（Human の push 指示待ち）
+- ~~commit `78716fd` は未 push~~ → **push 済み・CI green**（`5309a5d`・run `27990833476` 全3ジョブ success・2026-06-23）
 
 ---
 
