@@ -329,13 +329,31 @@ CounterView(counter: counter)
   メソッド構文（`.testable(_:)`）を採用して衝突を回避
 - `@available(iOS 15.0, macOS 13.0, *)` — `.task` 修飾子の最小要件に合わせた availability
 
-#### ② EnvironmentObject による Registry 注入（次タスクへ deferred）
+#### ② Environment キーによる Registry 注入（STEP 4 実装済み）
 
-グローバルシングルトン（`TestableRegistry.shared`）廃止 → `EnvironmentObject` / `Environment` で
-Registry を View ツリーへ注入する方式。`TestableServer.find` の参照経路の再設計を伴うため、
-本タスクスコープ外（大改修）として次タスク候補へ分離。
+グローバルシングルトン（`TestableRegistry.shared`）を廃止し、`EnvironmentKey` カスタムキー方式で
+Registry を View ツリーへ注入する方式を STEP 4 で実装。
 
-**工数**: ① 完了（STEP 3）/ ② 1 セッション（グローバルシングルトン廃止が必要）
+**採用方式**: `EnvironmentKey` ＋ `@Environment(\.testableRegistry)`（`TestableEnvironment.swift`）
+
+**EnvironmentObject を採用しなかった理由**: `EnvironmentObject` は `ObservableObject`（`@MainActor` class）を
+要求するが、`TestableRegistry` は `actor` のため準拠不可。actor を維持したまま依存注入できる
+`EnvironmentKey` カスタムキー方式を選択した。
+
+**注入アーキテクチャ（DemoApp）**:
+1. `RootView` が `@State private var registry = TestableRegistry()` で Registry を1つ生成
+2. `.environment(\.testableRegistry, registry)` で View ツリー全体へ注入
+3. `.task` 内で同じ `registry` を `TestableServer(port:registry:)` へ渡す
+4. `CounterView.testable(counter)` → `TestableRegistrationModifier` が `@Environment(\.testableRegistry)` で registry を受け取り自動 register
+
+**CLI（`TestableUIKitDemo/main.swift`）**: SwiftUI 環境を持たないため、ローカル `registry` を直接生成して
+`TestableServer(port:registry:)` へ注入し、コンポーネントを `await registry.register(button)` で直接登録。
+
+**defaultValue リスク**: `.environment()` 注入を忘れた View では、登録先が
+`TestableRegistryKey.defaultValue`（空の独立 Registry）となり、サーバの Registry と別物になる
+（サイレント失敗）。正しく注入すれば問題なし。
+
+**工数**: ① 完了（STEP 3）/ ② 完了（STEP 4）
 
 ---
 

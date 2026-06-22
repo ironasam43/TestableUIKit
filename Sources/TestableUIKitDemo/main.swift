@@ -2,14 +2,16 @@ import Foundation
 import TestableUIKit
 import Dispatch
 
+// CLI は SwiftUI 環境を持たないため、Registry を直接生成して Server へ注入する
+let registry = TestableRegistry()
 let button = CLIDemoLoginButton()
 do {
-  let server = try TestableServer(port: 8888)
-  
+  let server = try TestableServer(port: 8888, registry: registry)
+
   Task {
-    await TestableRegistry.shared.register(button)
+    await registry.register(button)
   }
-  
+
   server.start()
 
   print("✅ TestableServer running on http://localhost:8888")

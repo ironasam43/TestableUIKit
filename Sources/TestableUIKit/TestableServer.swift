@@ -6,11 +6,17 @@ public final class TestableServer: @unchecked Sendable {
   private let listener: NWListener
   private let queue = DispatchQueue(label: "testable.server", qos: .userInitiated)
   public let port: UInt16
+  private let registry: TestableRegistry
 
   private static let headerSeparator = Data([0x0D, 0x0A, 0x0D, 0x0A]) // \r\n\r\n
 
-  public init(port: UInt16 = 8888) throws {
+  /// - Parameters:
+  ///   - port: 待ち受けポート（既定 8888）
+  ///   - registry: コンポーネントの登録・検索に使う Registry インスタンス。
+  ///               アプリ側で生成した同一インスタンスを渡すことでシングルトンを廃止する。
+  public init(port: UInt16 = 8888, registry: TestableRegistry) throws {
     self.port = port
+    self.registry = registry
     guard let nwPort = NWEndpoint.Port(rawValue: port) else {
       throw TestError.invalidParameters
     }
@@ -129,7 +135,7 @@ public final class TestableServer: @unchecked Sendable {
       do {
         let req = try JSONDecoder().decode(PerformRequest.self, from: Data(bodyData))
 
-        guard let testable = await TestableRegistry.shared.find(id: req.testID) else {
+        guard let testable = await registry.find(id: req.testID) else {
           return httpResp(404, #"{"error":"component not found"}"#)
         }
 

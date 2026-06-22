@@ -5,9 +5,13 @@ import SwiftUI
 /// SwiftUI View に `.testable(_:)` 修飾を付与するだけで AnyTestable を
 /// TestableRegistry へ登録できる ViewModifier。
 /// View の表示開始（`.task`）で自動登録されるため、手動 `register` 呼び出しが不要になる。
+/// 登録先は `@Environment(\.testableRegistry)` で取得した注入 Registry を使う。
+/// 祖先 View で `.environment(\.testableRegistry, registry)` を設定しない場合は
+/// defaultValue（空の独立 Registry）へ登録されるため、TestableServer と共有できない点に注意。
 @available(iOS 15.0, macOS 13.0, *)
 public struct TestableRegistrationModifier: ViewModifier {
   private let testable: AnyTestable
+  @Environment(\.testableRegistry) private var registry
 
   public init(_ testable: AnyTestable) {
     self.testable = testable
@@ -16,7 +20,7 @@ public struct TestableRegistrationModifier: ViewModifier {
   public func body(content: Content) -> some View {
     content
       .task {
-        await TestableRegistry.shared.register(testable)
+        await registry.register(testable)
       }
   }
 }

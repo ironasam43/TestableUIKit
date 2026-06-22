@@ -13,15 +13,21 @@ struct TestableUIApp: App {
 struct RootView: View {
   @StateObject private var loginButton = LoginButton()
   @StateObject private var counter = Counter()
+  // Registry インスタンスをアプリ起点で1つ生成し、サーバと View ツリーへ注入する
+  @State private var registry = TestableRegistry()
   @State private var server: TestableServer?
   @State private var serverRunning = false
 
   var body: some View {
     ContentView(loginButton: loginButton, counter: counter, serverRunning: $serverRunning)
+      // 同一 registry を View ツリー全体へ注入（CounterView の .testable() が利用）
+      .environment(\.testableRegistry, registry)
       .task {
         do {
-          let s = try TestableServer(port: 8888)
-          await TestableRegistry.shared.register(loginButton)
+          // Server にも同じ registry を注入してシングルトンを廃止
+          let s = try TestableServer(port: 8888, registry: registry)
+          // loginButton は .testable() 未移行のため直接 register（STEP 3 スコープ外・次タスク候補）
+          await registry.register(loginButton)
           // counter は CounterView に付与した .testable(counter) で自動登録
           s.start()
           server = s

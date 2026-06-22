@@ -11,11 +11,9 @@ public protocol AnyTestable: AnyObject, Sendable {
 // MARK: - TestableRegistry
 
 public actor TestableRegistry {
-  public static let shared = TestableRegistry()
-
   private var testables: [String: AnyTestable] = [:]
 
-  private init() {}
+  public init() {}
 
   public func register(_ testable: AnyTestable) {
     testables[testable.testID] = testable
