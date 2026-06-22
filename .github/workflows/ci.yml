@@ -93,7 +93,7 @@ jobs:
       - name: Run pytest IPC tests
         run: |
           echo "=== STEP: pytest ==="
-          .venv/bin/pytest Tests/test_ipc.py -v
+          .venv/bin/pytest Tests/test_ipc.py Tests/test_swiftui_counter.py -v
 
       - name: Shutdown Simulator
         if: always()
