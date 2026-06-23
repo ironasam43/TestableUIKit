@@ -1,4 +1,4 @@
-最終更新：2026-06-23（`ui_screenshot` 実機対応 push 済み・CI 全3ジョブ green — Auditor [WARN] 解消（design.md 純関数名を `is_loopback_host` へ整合・commit `5309a5d`）。実装は `78716fd`/docs `11c1238`。残：実機 PNG 取得確認のみ）
+最終更新：2026-06-23（**実機 PNG 取得確認 成立・VQ 全クローズ（未確認 0 件）**。実機 `192.168.0.181` で `ui_screenshot` 駆動 → PNG 79,768 bytes・シグネチャ一致・960×1440。実機テスト基盤 4/4 ツール完全クローズ。前段：`ui_screenshot` 実機対応実装 `78716fd`/docs `11c1238`/WARN 解消 `5309a5d` push 済み・CI green）
 
 # TestableUIKit 作業メモ
 
@@ -25,7 +25,13 @@
 - **Design D 実機 Wi-Fi 越し疎通成立 ＋ MCP live PoC（3/4 ツール実機駆動）** ✅（2026-06-23）— **実機 iPhone `192.168.0.181` に MCP tool を直接駆動。ui_ping/ui_getState/ui_perform(count 0→1) を実機 e2e 実証・消し込み。ui_screenshot のみ simctl(Simulator)依存で実機不可＝別行で継続。全 8 commit push 済み・CI run `27989218172` 全3ジョブ green**
 - **`ui_screenshot` 実機対応実装（経路A: GET /screenshot + screenshotProvider 注入）** ✅（2026-06-23）— **TestableServer に screenshotProvider 注入 + GET /screenshot 追加、DemoApp に UIKit key window キャプチャ closure 注入、Python 側 GET /screenshot 一次経路化＋simctl フォールバック。swift test 100 PASS / pytest 59 PASS / commit `78716fd`。実機での実 PNG 取得確認は VQ へ起票（DemoApp 再インストール後）**
 
-## 現在地：`ui_screenshot` 実機対応コード実装完了 → DemoApp 再インストール後の実 PNG 取得確認が残タスク
+## 現在地：実機テスト基盤 完全クローズ（4/4 ツール実機 e2e・VQ 未確認 0 件）
+
+### ✅ `ui_screenshot` 実機 PNG 取得確認 成立（2026-06-23・検証のみ・コード変更なし）
+- 最新 DEBUG ビルド（`05f03b7` ベース・`GET /screenshot` 搭載）を実機 `192.168.0.181` へ再インストール・起動済み
+- Mac から `TESTABLE_IPC_HOST=192.168.0.181 .venv/bin/python` で実コード `ui_screenshot()` 直接駆動 → `format:"png"`・base64 106,360 文字 → デコード後 **79,768 bytes・PNG シグネチャ一致・960×1440**
+- 経路A（`GET /screenshot` アプリ内キャプチャ）が Simulator 非依存で実機動作することを実証 → `ui_ping`/`ui_getState`/`ui_perform`/`ui_screenshot` の **4/4 ツールが実機 e2e でクローズ**
+- VQ 最後の未確認 1 件を消し込み（未確認 0 件）
 
 ### ✅ `ui_screenshot` 実機対応実装完了（2026-06-23・commit `78716fd`）
 - `TestableServer` に `screenshotProvider: (@MainActor () async -> Data?)?` 引数追加（後方互換）＋ `GET /screenshot` エンドポイント追加
@@ -35,14 +41,13 @@
 - `docs/ipc-protocol.md` 追記・`docs/design.md` §D 拡張追記・`docs/history.md` 追記・VQ 更新
 
 ## 次ステップ候補
-1. **DemoApp 再インストール後の実機 PNG 取得確認（VQ 筆頭）**: 実機（`192.168.0.181`）に `78716fd` ベースの DEBUG ビルドを再インストール → `TESTABLE_IPC_HOST=192.168.0.181` で `ui_screenshot` を呼び PNG base64 取得を確認（VQ 参照）
-2. **CI push・CI green 確認**: commit `78716fd` を push して CI 全3ジョブ green を確認
-3. **さらに多くのコンポーネント計装**: Picker / DatePicker / List など SwiftUI 標準コンポーネントの拡張
-4. **実機ペアリング前提の運用整備**: 実機 IP（`192.168.0.181`）は DHCP で変わりうる。`TESTABLE_IPC_HOST` の設定手順を SETUP/README に明文化すると再現性が上がる
+1. **さらに多くのコンポーネント計装**: Picker / DatePicker / List など SwiftUI 標準コンポーネントの拡張
+2. **実機ペアリング前提の運用整備**: 実機 IP（`192.168.0.181`）は DHCP で変わりうる。`TESTABLE_IPC_HOST` の設定手順を SETUP/README に明文化すると再現性が上がる
+3. **screenshot 経路の整理**: 実機=`GET /screenshot`、Simulator=simctl フォールバックの二経路が共存。運用ドキュメント（SETUP/README）に経路選択ルールを明文化すると混乱を防げる
 
 ## 🔄 積み残し
-- **VQ 未確認 1 件（筆頭）**: `ui_screenshot` の実機での実 PNG 取得確認（DemoApp 再インストール後・`TESTABLE_IPC_HOST=192.168.0.181` で `ui_screenshot` → PNG base64 確認）。実装コード（`78716fd`）は完了済み
-- ~~commit `78716fd` は未 push~~ → **push 済み・CI green**（`5309a5d`・run `27990833476` 全3ジョブ success・2026-06-23）
+- **VQ 未確認 0 件**（実機テスト基盤 4/4 ツール完全クローズ・2026-06-23）
+- このセッションの commit（VQ 消し込み・history・handoff）は要 push
 
 ---
 
