@@ -289,7 +289,7 @@ TESTABLE_IPC_HOST=192.168.0.181 TESTABLE_IPC_PORT=8888 python3 run_test.py
 | Simulator | `GET /screenshot` 試行 → simctl フォールバック | `GET /screenshot` が利用可能な場合はそちらを優先。不可の場合のみ macOS `simctl` でキャプチャ |
 
 **実装詳細**:
-- `run_test.py` の `ui_screenshot()` が最初に `GET /screenshot` をリクエスト
+- `mcp_server/testableui_mcp.py` の `ui_screenshot()` が最初に `GET /screenshot` をリクエスト
 - 実機はこのエンドポイントで直接キャプチャを返す
 - Simulator で接続エラーが発生した場合のみ `simctl` にフォールバック
 
