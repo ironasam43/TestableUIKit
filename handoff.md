@@ -42,12 +42,12 @@
 
 ## 次ステップ候補
 1. **さらに多くのコンポーネント計装**: Picker / DatePicker / List など SwiftUI 標準コンポーネントの拡張
-2. **実機ペアリング前提の運用整備**: 実機 IP（`192.168.0.181`）は DHCP で変わりうる。`TESTABLE_IPC_HOST` の設定手順を SETUP/README に明文化すると再現性が上がる
-3. **screenshot 経路の整理**: 実機=`GET /screenshot`、Simulator=simctl フォールバックの二経路が共存。運用ドキュメント（SETUP/README）に経路選択ルールを明文化すると混乱を防げる
+2. ✅ **実機ペアリング前提の運用整備** （2026-06-23）: 実機 IP・DHCP 変動・`TESTABLE_IPC_HOST` 設定手順を SETUP.md ステップ7 ＋ README.md サブ節に明文化。再現性向上・整備完了
+3. ✅ **screenshot 経路の整理** （2026-06-23）: 実機=`GET /screenshot`・Simulator=simctl フォールバックの二経路を SETUP.md ステップ7 ＋ README.md に明文化。経路選択ルール・混乱防止・整備完了
 
 ## 🔄 積み残し
 - **VQ 未確認 0 件**（実機テスト基盤 4/4 ツール完全クローズ・2026-06-23）
-- このセッションの commit（VQ 消し込み・history・handoff）は要 push
+- 本セッション commit（運用ドキュメント整備：SETUP.md + README.md + history.md）は要 push
 
 ---
 

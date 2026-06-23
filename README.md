@@ -30,7 +30,7 @@ TestableUIKit/
 
 ```
 ┌────────────────────────────────────────────────┐
-│ iOS Simulator（DemoApp）                        │
+│ iOS Simulator / 実機（DemoApp）                 │
 │ ┌──────────────────────────────────────────┐  │
 │ │ LoginButton (AnyTestable)                 │  │
 │ │ - testID: "auth.loginButton"              │  │
@@ -189,6 +189,22 @@ python3 run_test.py
 All tests completed successfully!
 ```
 
+### 実機（LAN 越し）での実行
+
+Simulator ではなく実機の iPhone / iPad でテストを実行する場合：
+
+```bash
+# 実機の IP アドレスを指定してテスト実行
+TESTABLE_IPC_HOST=<実機IP> python3 run_test.py
+```
+
+**例**（実機の IP が `192.168.0.181` の場合）：
+```bash
+TESTABLE_IPC_HOST=192.168.0.181 python3 run_test.py
+```
+
+詳細は **[SETUP.md のステップ 7](./SETUP.md#ステップ-7実機lan-越しでの実行)** を参照してください（IP 確認方法・ファイアウォール設定・トラブルシューティングを記載）。
+
 ---
 
 ## 技術スタック
@@ -210,7 +226,7 @@ All tests completed successfully!
 - [ ] Contract（仕様）の追加：Invariant + Transition
 - [ ] スクリーンショット + 変化分析
 - [ ] AI テスト生成（GPT-4 / Claude）
-- [ ] 実機対応（Wifi 経由の通信）
+- [x] 実機対応（Wi-Fi 越し LAN 通信）✅
 - [ ] CI/CD 統合（GitHub Actions）
 
 ---
