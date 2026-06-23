@@ -47,7 +47,7 @@
 
 ## 🔄 積み残し
 - **VQ 未確認 0 件**（実機テスト基盤 4/4 ツール完全クローズ・2026-06-23）
-- 本セッション commit（運用ドキュメント整備：SETUP.md + README.md + history.md）は要 push
+- 運用ドキュメント整備（`cac84fe`）＋ Auditor WARN 解消（`d7a2d91`：SETUP.md 7-5 の ui_screenshot 参照パスを mcp_server/testableui_mcp.py へ整合）push 済み・CI run `27994424104` 全3ジョブ green。未 push なし
 
 ---
 
