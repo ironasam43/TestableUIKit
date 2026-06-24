@@ -1,4 +1,4 @@
-最終更新：2026-06-23（**実機 PNG 取得確認 成立・VQ 全クローズ（未確認 0 件）**。実機 `192.168.0.181` で `ui_screenshot` 駆動 → PNG 79,768 bytes・シグネチャ一致・960×1440。実機テスト基盤 4/4 ツール完全クローズ。前段：`ui_screenshot` 実機対応実装 `78716fd`/docs `11c1238`/WARN 解消 `5309a5d` push 済み・CI green）
+最終更新：2026-06-24（**semver タグ運用導入・初期 `v0.1.0` タグ起票（inbox 消化・検収不要）**。`main` HEAD に annotated tag `v0.1.0` 付与・remote push 済み（commit `665d464`）。README に「## バージョニング方針（semver）」節を明文化（pre-1.0: MINOR=破壊的/PATCH=互換）。利用側が `.package(from: "0.1.0")` で固定可能に。前回：実機 PNG 取得確認 成立・VQ 全クローズ（未確認 0 件）・実機テスト基盤 4/4 ツール完全クローズ）
 
 # TestableUIKit 作業メモ
 
