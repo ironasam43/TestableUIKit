@@ -262,6 +262,36 @@ which curl
 
 ---
 
+## バージョニング方針（semver）
+
+本ライブラリは [Semantic Versioning](https://semver.org/lang/ja/) に従ってタグを付与する。
+利用側は `.package(url: "https://github.com/ironasam43/TestableUIKit", from: "0.1.0")` のように
+バージョン固定できる。
+
+### pre-1.0（現在）の運用ルール
+
+公開 API は安定化前（`0.x`）であり、**破壊的変更を許容する段階**にある。
+`0.x` 系では semver の慣例に従い、以下の粒度でタグを切る:
+
+| 変更種別 | 上げる桁 | 例 |
+|---|---|---|
+| 破壊的変更（公開 API のシグネチャ変更・削除） | MINOR | `0.1.0` → `0.2.0` |
+| 後方互換な機能追加・バグ修正 | PATCH | `0.1.0` → `0.1.1` |
+
+> `0.x` では MINOR が「破壊的変更」を、PATCH が「互換変更」を表す（1.0 到達後の MAJOR/MINOR に相当）。
+
+### タグを切るタイミング
+
+- 公開 API（`TestableUIKit` ライブラリの export シンボル）に変更が入り、利用側に配布したい節目で annotated tag を切る。
+- 内部実装のみの変更（テスト・ドキュメント・Demo アプリ）はタグ不要。
+- タグは `git tag -a vX.Y.Z -m "..."` で annotated tag として作成し、`git push origin vX.Y.Z` で remote へ反映する。
+
+### 1.0 到達条件（将来）
+
+公開 API（IPC プロトコル・`AnyTestable` protocol・MCP tool 群）が安定し、破壊的変更を避ける段階に入ったら `v1.0.0` を切る。
+
+---
+
 ## ライセンス
 
 このプロジェクトは内部開発向けです。

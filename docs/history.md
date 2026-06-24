@@ -40,3 +40,10 @@
 - 一次情報裏取り: `testableui_mcp.py`(178行)＋`ipc_helpers.py`(純関数)＝状態レス HTTP↔MCP 中継・固有ロジックなし／`TestableServer.swift` が `/ping`・`/perform`・`/screenshot` 保持／screenshot は `GET /screenshot`(app側 provider)一次・simctl は loopback fallback／**git tag 0 件**（version pin 不可）／Package.swift 外部依存ゼロ。
 - 回答要旨: ①Swift SDK で4ツール再実装は可（FastMCP 相当の自動推論は無く Tool 手動登録だが schema 単純で軽い）②Package.swift target 追加=S〜M・**外部依存ゼロ方針は MCP executable target に依存を封じ込めれば library 側は維持可** ③screenshot は既存 `GET /screenshot` provider 経路で吸収・simctl fallback は `Process` 移植可で設計不変 ④Python 版はパリティ＋テスト確立まで併走、その後廃止（恒久併存は避ける）⑤semver タグ即起票必須(S)・public API 監査は 0.x なら S/1.0 なら M。前提整理として「Swift 化＝in-process 化ではなく venv 消滅/SPM 配布/単一言語」を §6 #3 へ反映推奨。
 - 回答全文は `inbox/done/2026-06-24-mcp-server-swift-feasibility.md` に追記。コード変更なし（照会回答のみ）。
+
+## 2026-06-24 inbox 消化: semver タグ運用の導入と初期 v0.1.0 タグ起票（検収不要）
+- HQ からのチケット `2026-06-24-semver-tag-adoption.md`（消化モード=直接・検収不要）を消化。
+- 一次情報確認: `git tag` 0 件・`git ls-remote --tags origin` 0 件で **semver タグ実測ゼロ** を裏取り。公開 API は screenshotProvider 追加・Environment キー注入など破壊的変更が継続中で pre-1.0（`0.x`）が妥当と判定。
+- 初期 annotated tag `v0.1.0` を `main` HEAD に付与し remote へ push。利用側（DeeperAI 等）が `.package(url:, from: "0.1.0")` でバージョン固定可能に。
+- semver 運用方針を `README.md` に「## バージョニング方針（semver）」節として明文化（pre-1.0 では MINOR=破壊的変更／PATCH=互換変更、タグを切るタイミング、1.0 到達条件）。
+- コード変更なし（タグ＋ドキュメントのみ）。L0 ビルド対象外。
