@@ -47,3 +47,15 @@
 - 初期 annotated tag `v0.1.0` を `main` HEAD に付与し remote へ push。利用側（DeeperAI 等）が `.package(url:, from: "0.1.0")` でバージョン固定可能に。
 - semver 運用方針を `README.md` に「## バージョニング方針（semver）」節として明文化（pre-1.0 では MINOR=破壊的変更／PATCH=互換変更、タグを切るタイミング、1.0 到達条件）。
 - コード変更なし（タグ＋ドキュメントのみ）。L0 ビルド対象外。
+
+## 2026-06-24 inbox 消化（フロー）: MCP サーバ B の Swift 化・SPM 公開
+- HQ チケット（消化モード=フロー）を cmflow で消化。Python 製 MCP サーバ `mcp_server/` を Swift（MCP swift-sdk）へ書き直し SwiftPM 配布可能にした。公開 4 ツール・HTTP 契約・状態レス設計は Python 版と完全パリティ。
+- **依存封じ込めの設計判断**: swift-sdk は実測で tools-version 6.1・iOS16・swift-system/log/nio 等 transitive 依存を要求。メイン `Package.swift`（tools 5.9・iOS15・依存ゼロ）に同梱すると library `TestableUIKit` の consumer まで巻き込み「外部依存ゼロ・iOS15 維持」を破壊する。MCP サーバは TestableUIKit の Swift 型を import せず HTTP IPC のみで通信するため、**完全に独立した sub-package `mcp-swift/`** へ分離し、メイン `Package.swift` は一切変更しない構成にした（承認 [ASK HUMAN] 選択肢1）。
+- **新規 sub-package `mcp-swift/`**（tools 6.0 / macOS13）:
+  - `Sources/TestableUIKitMCPCore/IPCHelpers.swift` — 純関数（外部依存ゼロ・XCTest 対象。Python `ipc_helpers.py` と 1:1）: host/port 解決・base/screenshot URL 構築・perform payload 組み立て・simctl コマンド生成・loopback 判定。
+  - `Sources/TestableUIKitMCP/main.swift` — MCP `Server` に 4 ツール手動登録（ui_ping/ui_getState/ui_perform/ui_screenshot）・`StdioTransport` 起動・`URLSession` で HTTP 中継・`ui_screenshot` は `GET /screenshot` 一次／loopback のみ simctl フォールバック。swift-sdk 依存はこの executable のみ。
+  - `Tests/TestableUIKitMCPCoreTests/IPCHelpersTests.swift` — L1 XCTest 41 ケース。
+- **検証**: `cd mcp-swift && swift build`（警告ゼロ）・`swift test` **41 PASS**。MCP stdio handshake を Python ハーネスで実証（`initialize`→serverInfo `TestableUIKit 0.1.0`、`tools/list`→4 ツール登録確認、`tools/call ui_ping`（アプリ未起動）→`isError:true` で graceful fail＝HTTP 中継経路の配線確認）。
+- **依存分離の確認**: ルート `swift build` ではメイン package グラフのみ解決され swift-sdk は出現しない（`mcp-swift/` は別パッケージ）。両グラフが交わらないことが分離成立条件。`Package.resolved` も追跡（再現性）。
+- `docs/design.md` に §E2「MCP サーバ Swift 化」を追記（分離理由・ターゲット構成・起動方法・Python 版廃止条件）。
+- **残**: 実アプリ応答の成功パス（起動中 DemoApp に対する 4 ツール live 駆動パリティ）は実機/Simulator 前提のため VQ へ起票。Python 版 `mcp_server/` は廃止条件（live パリティ確認＋CI 組込＋ドキュメント一本化）を満たすまで併走。

@@ -1,0 +1,286 @@
+//
+//  main.swift
+//  TestableUIKitMCP
+//
+//  TestableUIKit MCP Server（Swift 版） — UI テスト用 MCP ラッパー
+//
+//  TestableUIKit の HTTP IPC（localhost:8888）を MCP tool で薄くラップし、
+//  Claude が実行中の iOS UI を直接駆動・describedState を構造化検査できる。
+//  状態レス HTTP 中継のみで、TestableUIKit の Swift 型は import しない。
+//
+//  公開する MCP tool（4本・Python 版と同一）:
+//    ui_ping        — GET /ping            死活確認
+//    ui_getState    — POST /perform getState  状態取得
+//    ui_perform     — POST /perform          コマンド実行（tap/setProperty など）
+//    ui_screenshot  — GET /screenshot（一次）/ simctl（loopback フォールバック）
+//
+//  前提:
+//    DemoApp が iOS 実機 / Simulator 上で起動済み（:8888 でリッスン中）。
+//    接続先は環境変数 TESTABLE_IPC_HOST / TESTABLE_IPC_PORT で上書き可。
+//
+
+import Foundation
+import MCP
+import TestableUIKitMCPCore
+
+// ================================================================
+// 接続先解決（環境変数 → host/port）
+// ================================================================
+
+let (ipcHost, ipcPort) = IPCHelpers.resolveIPCHostPort(
+  env: ProcessInfo.processInfo.environment
+)
+let ipcBase = IPCHelpers.buildBaseURL(host: ipcHost, port: ipcPort)
+
+// ================================================================
+// HTTP 中継ユーティリティ（URLSession）
+// ================================================================
+
+enum IPCError: Error, CustomStringConvertible {
+  case badURL(String)
+  case httpStatus(Int, String)
+  case transport(String)
+
+  var description: String {
+    switch self {
+    case .badURL(let u): return "不正な URL: \(u)"
+    case .httpStatus(let code, let body): return "HTTP \(code): \(body)"
+    case .transport(let msg): return msg
+    }
+  }
+}
+
+/// GET リクエストを送りレスポンス本文（文字列）を返す。
+func httpGET(_ urlString: String, timeout: TimeInterval = 10) async throws -> (Int, Data) {
+  guard let url = URL(string: urlString) else { throw IPCError.badURL(urlString) }
+  var req = URLRequest(url: url)
+  req.httpMethod = "GET"
+  req.timeoutInterval = timeout
+  let (data, resp) = try await URLSession.shared.data(for: req)
+  let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
+  return (code, data)
+}
+
+/// POST リクエスト（JSON body）を送りレスポンス本文（文字列）を返す。
+func httpPOSTJSON(_ urlString: String, body: String, timeout: TimeInterval = 10) async throws -> (Int, Data) {
+  guard let url = URL(string: urlString) else { throw IPCError.badURL(urlString) }
+  var req = URLRequest(url: url)
+  req.httpMethod = "POST"
+  req.timeoutInterval = timeout
+  req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+  req.httpBody = body.data(using: .utf8)
+  let (data, resp) = try await URLSession.shared.data(for: req)
+  let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
+  return (code, data)
+}
+
+func bodyString(_ data: Data) -> String {
+  return String(data: data, encoding: .utf8) ?? ""
+}
+
+/// MCP の Value を JSON 文字列へシリアライズする（perform の parameters 用）。
+func jsonString(from value: Value) -> String? {
+  guard let data = try? JSONEncoder().encode(value) else { return nil }
+  return String(data: data, encoding: .utf8)
+}
+
+// ================================================================
+// ツール実体（HTTP を薄く中継・状態レス）
+// ================================================================
+
+/// GET /ping 死活確認。レスポンス JSON 文字列を返す。
+func uiPing() async throws -> String {
+  let (code, data) = try await httpGET("\(ipcBase)/ping", timeout: 5)
+  guard code == 200 else { throw IPCError.httpStatus(code, bodyString(data)) }
+  return bodyString(data)
+}
+
+/// POST /perform getState 状態取得。
+func uiGetState(testID: String) async throws -> String {
+  let payload = IPCHelpers.buildPerformPayload(testID: testID, commandName: "getState")
+  let (code, data) = try await httpPOSTJSON("\(ipcBase)/perform", body: payload)
+  guard code == 200 else { throw IPCError.httpStatus(code, bodyString(data)) }
+  return bodyString(data)
+}
+
+/// POST /perform コマンド実行。
+func uiPerform(testID: String, command: String, params: Value?) async throws -> String {
+  let paramsJSON: String?
+  if let params, params != .null {
+    paramsJSON = jsonString(from: params)
+  } else {
+    paramsJSON = nil
+  }
+  let payload = IPCHelpers.buildPerformPayload(
+    testID: testID, commandName: command, parametersJSON: paramsJSON
+  )
+  let (code, data) = try await httpPOSTJSON("\(ipcBase)/perform", body: payload)
+  guard code == 200 else { throw IPCError.httpStatus(code, bodyString(data)) }
+  return bodyString(data)
+}
+
+/// GET /screenshot（一次経路）。失敗時 loopback のみ simctl フォールバック。
+/// 戻り値: (base64 PNG, mimeType)
+func uiScreenshot() async throws -> (base64: String, mimeType: String) {
+  let url = IPCHelpers.buildScreenshotURL(host: ipcHost, port: ipcPort)
+  do {
+    let (code, data) = try await httpGET(url, timeout: 10)
+    if code == 200 {
+      // {"image_base64":"...","format":"png"}
+      guard
+        let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+        let b64 = obj["image_base64"] as? String
+      else {
+        throw IPCError.transport("GET /screenshot のレスポンス解析に失敗: \(bodyString(data))")
+      }
+      return (b64, "image/png")
+    }
+    throw IPCError.httpStatus(code, bodyString(data))
+  } catch let err as IPCError {
+    // HTTP ステータス異常はそのまま伝播（provider 未設定 503 等）
+    if case .httpStatus = err { throw err }
+    // 接続失敗系 → loopback のみ simctl フォールバック
+    return try screenshotViaSimctl()
+  } catch {
+    // URLSession の接続失敗など → loopback のみ simctl フォールバック
+    if !IPCHelpers.isLoopbackHost(ipcHost) {
+      throw IPCError.transport(
+        "GET /screenshot への接続に失敗しました (host=\(ipcHost)): \(error)\n"
+          + "実機接続時は DemoApp が起動中で GET /screenshot が有効か確認してください。"
+      )
+    }
+    return try screenshotViaSimctl()
+  }
+}
+
+/// Simulator 専用フォールバック: simctl io booted screenshot。
+func screenshotViaSimctl() throws -> (base64: String, mimeType: String) {
+  guard IPCHelpers.isLoopbackHost(ipcHost) else {
+    throw IPCError.transport(
+      "GET /screenshot 不達かつ非 loopback (host=\(ipcHost)) のため simctl フォールバック不可。"
+    )
+  }
+  let tmp = NSTemporaryDirectory() + "testableui-shot-\(ProcessInfo.processInfo.processIdentifier).png"
+  let cmd = IPCHelpers.buildSimctlScreenshotCommand(outputPath: tmp)
+  let proc = Process()
+  proc.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+  proc.arguments = cmd
+  let errPipe = Pipe()
+  proc.standardError = errPipe
+  try proc.run()
+  proc.waitUntilExit()
+  defer { try? FileManager.default.removeItem(atPath: tmp) }
+  guard proc.terminationStatus == 0 else {
+    let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
+    throw IPCError.transport("simctl screenshot 失敗: \(bodyString(errData))")
+  }
+  guard let png = FileManager.default.contents(atPath: tmp) else {
+    throw IPCError.transport("simctl 出力ファイルの読み込みに失敗: \(tmp)")
+  }
+  return (png.base64EncodedString(), "image/png")
+}
+
+// ================================================================
+// MCP サーバ構築（ツール登録・stdio transport）
+// ================================================================
+
+let server = Server(
+  name: "TestableUIKit",
+  version: "0.1.0"
+)
+
+// --- tools/list ---
+await server.withMethodHandler(ListTools.self) { _ in
+  let tools = [
+    Tool(
+      name: "ui_ping",
+      description: "TestableUIKit サーバーの死活確認（GET /ping）。DemoApp が起動中か確認する。",
+      inputSchema: .object(["type": .string("object"), "properties": .object([:])])
+    ),
+    Tool(
+      name: "ui_getState",
+      description: "指定コンポーネントの現在の describedState を取得する（POST /perform getState）。",
+      inputSchema: .object([
+        "type": .string("object"),
+        "properties": .object([
+          "testID": .object([
+            "type": .string("string"),
+            "description": .string("コンポーネントの testID（例: scene.auth.loginButton）"),
+          ])
+        ]),
+        "required": .array([.string("testID")]),
+      ])
+    ),
+    Tool(
+      name: "ui_perform",
+      description: "コンポーネントにコマンドを送信する（POST /perform）。tap / setProperty / setEnabled / increment など。",
+      inputSchema: .object([
+        "type": .string("object"),
+        "properties": .object([
+          "testID": .object([
+            "type": .string("string"),
+            "description": .string("コンポーネントの testID"),
+          ]),
+          "command": .object([
+            "type": .string("string"),
+            "description": .string("コマンド名（tap / setProperty / setEnabled / increment など）"),
+          ]),
+          "params": .object([
+            "type": .string("object"),
+            "description": .string("コマンドパラメータ（コマンドにより異なる。省略可）"),
+          ]),
+        ]),
+        "required": .array([.string("testID"), .string("command")]),
+      ])
+    ),
+    Tool(
+      name: "ui_screenshot",
+      description: "起動中の DemoApp（実機 / Simulator）のスクリーンショットを取得する（GET /screenshot 一次・simctl フォールバック）。",
+      inputSchema: .object(["type": .string("object"), "properties": .object([:])])
+    ),
+  ]
+  return .init(tools: tools)
+}
+
+// --- tools/call ---
+await server.withMethodHandler(CallTool.self) { params in
+  do {
+    switch params.name {
+    case "ui_ping":
+      let json = try await uiPing()
+      return .init(content: [.text(text: json, annotations: nil, _meta: nil)], isError: false)
+
+    case "ui_getState":
+      guard let testID = params.arguments?["testID"]?.stringValue else {
+        return .init(content: [.text(text: "testID は必須です", annotations: nil, _meta: nil)], isError: true)
+      }
+      let json = try await uiGetState(testID: testID)
+      return .init(content: [.text(text: json, annotations: nil, _meta: nil)], isError: false)
+
+    case "ui_perform":
+      guard let testID = params.arguments?["testID"]?.stringValue,
+        let command = params.arguments?["command"]?.stringValue
+      else {
+        return .init(content: [.text(text: "testID と command は必須です", annotations: nil, _meta: nil)], isError: true)
+      }
+      let json = try await uiPerform(
+        testID: testID, command: command, params: params.arguments?["params"]
+      )
+      return .init(content: [.text(text: json, annotations: nil, _meta: nil)], isError: false)
+
+    case "ui_screenshot":
+      let (b64, mime) = try await uiScreenshot()
+      return .init(content: [.image(data: b64, mimeType: mime, annotations: nil, _meta: nil)], isError: false)
+
+    default:
+      return .init(content: [.text(text: "未知のツール: \(params.name)", annotations: nil, _meta: nil)], isError: true)
+    }
+  } catch {
+    return .init(content: [.text(text: "エラー: \(error)", annotations: nil, _meta: nil)], isError: true)
+  }
+}
+
+// --- stdio transport で起動し完了まで待機 ---
+let transport = StdioTransport()
+try await server.start(transport: transport)
+await server.waitUntilCompleted()

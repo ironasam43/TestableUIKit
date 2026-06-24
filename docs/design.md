@@ -432,6 +432,69 @@ python3 mcp_server/testableui_mcp.py
 
 ---
 
+### E2: MCP サーバ Swift 化（SPM 公開・2026-06-24）
+
+**概要**: §E の Python 製 MCP サーバ（`mcp_server/`）を Swift（MCP swift-sdk）へ書き直し、SwiftPM で配布可能にした。`.venv`/Python 依存なしで `swift run` 一発で起動できる。公開 4 ツール・HTTP 契約・状態レス設計は Python 版と完全に同一（パリティ維持）。
+
+**実装場所**: `mcp-swift/`（**独立 sub-package**。メイン `Package.swift` とは別パッケージ）
+
+#### なぜ独立 sub-package なのか（依存封じ込めの設計判断）
+
+MCP swift-sdk（`github.com/modelcontextprotocol/swift-sdk`）は実測で次を要求する:
+
+| 項目 | swift-sdk の要求 | メイン package | 衝突 |
+|---|---|---|---|
+| swift-tools-version | 6.1（全バージョン 6.0+） | 5.9 | あり |
+| platform | iOS 16 / macOS 13 | iOS 15 / macOS 13 | iOS で衝突 |
+| transitive deps | swift-system / swift-log / swift-nio / eventsource ほか | なし（依存ゼロ） | あり |
+
+SwiftPM は「使う product だけ」でなく**パッケージの依存グラフ全体を解決**するため、swift-sdk をメイン `Package.swift` に足すと library `TestableUIKit` の consumer まで iOS16・Swift6・swift-system 等へ巻き込む。これは差別化条件「**library 外部依存ゼロ・iOS15 維持**」を破壊する。
+
+MCP サーバは TestableUIKit の Swift 型を import せず **HTTP IPC のみ**で通信するため、ソース共有が不要。したがって完全に独立した sub-package へ分離でき、メイン `Package.swift` は一切変更しない。
+
+> **「library 依存ゼロ」の確認方法（consumer 視点）**: ルートで `swift build` するとメイン package の依存グラフだけが解決され swift-sdk は出現しない（`mcp-swift/` は別パッケージなので巻き込まれない）。`mcp-swift/` 側で `swift build` したときのみ swift-sdk が fetch される。両者のパッケージグラフが交わらないことが分離の成立条件。
+
+#### ターゲット構成
+
+```
+mcp-swift/
+  Package.swift                              # tools 6.0 / macOS13 / swift-sdk 依存
+  Sources/
+    TestableUIKitMCPCore/   IPCHelpers.swift # 純関数（外部依存ゼロ・XCTest 対象）
+    TestableUIKitMCP/       main.swift       # executable（swift-sdk 依存はここのみ）
+  Tests/
+    TestableUIKitMCPCoreTests/IPCHelpersTests.swift  # L1 XCTest 41 ケース
+```
+
+- `TestableUIKitMCPCore`: host/port 解決・URL 構築・perform payload 組み立て・simctl コマンド生成・loopback 判定。swift-sdk 非依存で機械検証する（Python `ipc_helpers.py` と 1:1）。
+- `TestableUIKitMCP`: MCP `Server` に 4 ツールを手動登録し `StdioTransport` で起動。HTTP 中継は `URLSession`。`ui_screenshot` は `GET /screenshot` 一次・loopback のみ simctl フォールバック（Python 版と同一経路）。
+
+#### 起動方法
+
+```bash
+# 前提: DemoApp が 実機 / Simulator 上で起動済み（:8888 リッスン中）
+cd projects/TestableUIKit/mcp-swift
+swift run TestableUIKitMCP
+# 接続先上書き: TESTABLE_IPC_HOST=192.168.0.181 swift run TestableUIKitMCP
+```
+
+#### 検証状況
+
+- **機械検証済み**: Core 純関数 XCTest 41 green。MCP stdio handshake（`initialize` → `tools/list` で 4 ツール登録確認、`tools/call ui_ping` がアプリ未起動時に `isError` で graceful fail）を実証。
+- **VQ/検収レーン**: 実アプリ応答の成功パス（起動中 DemoApp に対する 4 ツール live 駆動のパリティ）は実機/Simulator が前提のため verify-queue へ。
+
+#### Python 版（`mcp_server/`）の廃止条件
+
+両者は当面**併走**し、次を満たした時点で Python 版を撤去する:
+
+1. Swift 版の 4 ツール live 駆動パリティが実機/Simulator で確認できる（VQ クローズ）。
+2. CI に `cd mcp-swift && swift test` が組み込まれ green。
+3. README / SETUP の起動手順が Swift 版へ一本化される。
+
+廃止までは Python 版が正（live 実証済み）、Swift 版が新（机上＋protocol 検証済み）という位置づけ。
+
+---
+
 ### D: 実機テスト対応
 
 **概要**: iOS Simulator から実 iPhone での対応拡張

@@ -1,4 +1,4 @@
-最終更新：2026-06-24（**semver タグ運用導入・初期 `v0.1.0` タグ起票（inbox 消化・検収不要）**。`main` HEAD に annotated tag `v0.1.0` 付与・remote push 済み（commit `665d464`）。README に「## バージョニング方針（semver）」節を明文化（pre-1.0: MINOR=破壊的/PATCH=互換）。利用側が `.package(from: "0.1.0")` で固定可能に。前回：実機 PNG 取得確認 成立・VQ 全クローズ（未確認 0 件）・実機テスト基盤 4/4 ツール完全クローズ）
+最終更新：2026-06-24（**MCP サーバ B の Swift 化・SPM 公開（inbox 消化・フロー）**。Python 製 `mcp_server/` を独立 sub-package `mcp-swift/`（MCP swift-sdk）へ書き直し。swift-sdk は executable target に封じ込め、メイン `Package.swift` 不変＝library 依存ゼロ・iOS15 完全保全。`swift build` 警告ゼロ・`swift test` 41 PASS・MCP stdio handshake 実証（4 ツール登録確認）。実アプリ live パリティは VQ へ起票（Python 版と併走）。前回：semver `v0.1.0` タグ起票）
 
 # TestableUIKit 作業メモ
 
@@ -46,8 +46,10 @@
 3. ✅ **screenshot 経路の整理** （2026-06-23）: 実機=`GET /screenshot`・Simulator=simctl フォールバックの二経路を SETUP.md ステップ7 ＋ README.md に明文化。経路選択ルール・混乱防止・整備完了
 
 ## 🔄 積み残し
-- **VQ 未確認 0 件**（実機テスト基盤 4/4 ツール完全クローズ・2026-06-23）
-- 運用ドキュメント整備（`cac84fe`）＋ Auditor WARN 解消（`d7a2d91`：SETUP.md 7-5 の ui_screenshot 参照パスを mcp_server/testableui_mcp.py へ整合）push 済み・CI run `27994424104` 全3ジョブ green。未 push なし
+- **VQ 未確認 1 件**（2026-06-24 起票）: MCP Swift 版（`mcp-swift/`）の 4 ツール live パリティ（起動中 DemoApp に対する実 HTTP 中継成功パス）を実機/Simulator で確認。protocol-level＋Core 純関数 41 XCTest は機械検証済み。合格で Python 版 `mcp_server/` 廃止条件①を満たす。
+- **Python 版 `mcp_server/` は併走中**。廃止条件＝①live パリティ確認（VQ）②CI に `cd mcp-swift && swift test` 組込 green ③README/SETUP 起動手順を Swift 版へ一本化。`docs/design.md` §E2 参照。
+- **CI 未配線**: `mcp-swift/` の `swift test` は手元のみ。`.github/workflows/ci.yml` への組込は次タスク候補（廃止条件②）。
+- 運用ドキュメント整備（`cac84fe`）＋ Auditor WARN 解消（`d7a2d91`）push 済み・未 push なし
 
 ---
 
