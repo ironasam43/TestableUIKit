@@ -2,6 +2,9 @@
 
 > 新規作成（2026-06-02）。これまでの作業は handoff_1.md より要約。
 
+## 2026-06-25 verify-queue.template.md symlink 配布（HQ 直接改修・doc-only）
+- `docs/verify-queue.template.md` を Dev/docs から相対 symlink で配布（全PJ完全パリティ）。書式正本への追従が自動化された。
+
 ## 2026-06-25 verify-queue 書式正規化（HQ 直接改修・doc-only）
 
 - `docs/verify-queue.md` をワークスペース統一書式へ整形（HUMAN 合意・HQ＝Dev/ タブが直接実施）。正規化ヘッダ（書式ガイド＋3状態モデル・**退避2日**）を導入し、MCP Swift 版 4ツール live パリティの起票行を新書式（操作/着眼/合格 の3クローズ＋`└ 詳細`、build に紐づかない残余はラベル太字で代替）へ整形。起票内容は不変で体裁のみ。
