@@ -108,7 +108,7 @@
 2. ✅ `docs/troubleshooting.md`：SETUP.md / README から独立化・拡充（ポート競合・多重起動・タイムアウト・Registry 共有もれ）
 3. ✅ GitHub Releases で semver タグ v0.1.0 を付与（https://github.com/ironasam43/TestableUIKit/releases/tag/v0.1.0）
 4. ✅ README に getting-started へのリンク追加（冒頭バナー＋ドキュメント表）
-5. 🟡 Bundle ID 正式値確定 — **HUMAN 判断待ち**（命名方針を `[ASK HUMAN]` で確認中。現状 `com.testable.*`）
+5. ✅ Bundle ID 正式値確定 — `dev.plateworks.*` namespace に確定（project.yml 2箇所＋ci.yml simctl launch）
 6. ✅ TestableServer に graceful shutdown（`stop()`）・状態通知（`onStateChange`）・ポート競合検知（`.failed`）。XCTest +4（104 PASS）
 7. ✅ `Example/`：自作コンポーネント計装の最小サンプル（`MyToggleExample.swift` ＋ README）
 

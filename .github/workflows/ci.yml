@@ -74,7 +74,7 @@ jobs:
       - name: Launch DemoApp
         run: |
           echo "=== STEP: simctl launch ==="
-          xcrun simctl launch --terminate-running-process booted com.testable.TestableUIKitDemo
+          xcrun simctl launch --terminate-running-process booted dev.plateworks.TestableUIKitDemo
           sleep 5
 
       - name: Wait for /ping (max 60s)

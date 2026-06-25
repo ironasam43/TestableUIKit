@@ -11,7 +11,7 @@ targets:
       DEFINES_MODULE: YES
       PRODUCT_MODULE_NAME: TestableUIKit
       PRODUCT_NAME: TestableUIKit
-      PRODUCT_BUNDLE_IDENTIFIER: com.testable.TestableUIKit
+      PRODUCT_BUNDLE_IDENTIFIER: dev.plateworks.TestableUIKit
       SKIP_INSTALL: NO
       GENERATE_INFOPLIST_FILE: YES
 
@@ -26,7 +26,7 @@ targets:
     info:
       path: DemoApp/Info.plist
     settings:
-      PRODUCT_BUNDLE_IDENTIFIER: com.testable.TestableUIKitDemo
+      PRODUCT_BUNDLE_IDENTIFIER: dev.plateworks.TestableUIKitDemo
       DEVELOPMENT_TEAM: ""
       CODE_SIGN_IDENTITY: ""
       PROVISIONING_PROFILE: ""
