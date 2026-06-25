@@ -7,6 +7,15 @@ public final class TestableServer: @unchecked Sendable {
   /// アプリ側（DemoApp 等）が注入することで、TestableServer は UIKit/window を知らなくて済む。
   public typealias ScreenshotProvider = @MainActor @Sendable () async throws -> Data
 
+  /// サーバの待ち受け状態。`onStateChange` で外部へ通知される。
+  /// ポート競合（EADDRINUSE）などの起動失敗は `.failed` として届く。
+  public enum State: Sendable, Equatable {
+    case setup            // 初期状態（start 前）
+    case ready            // listen 開始・接続受付可能
+    case failed(String)   // 起動失敗（ポート競合など）。文字列はエラー説明
+    case cancelled        // stop() による graceful shutdown 完了
+  }
+
   private let listener: NWListener
   private let queue = DispatchQueue(label: "testable.server", qos: .userInitiated)
   public let port: UInt16
@@ -15,6 +24,14 @@ public final class TestableServer: @unchecked Sendable {
   private let registry: TestableRegistry
   /// スクリーンショット取得クロージャ（nil = 未設定、GET /screenshot は 503 を返す）
   private let screenshotProvider: ScreenshotProvider?
+
+  /// listener 状態の変化を外部へ通知するハンドラ。
+  /// ポート 8888 競合時は `.failed` が届くため、呼び出し側で別ポートへのフォールバックや
+  /// ユーザー通知を実装できる（従来は print のみでプログラム的に検知不能だった）。
+  public var onStateChange: (@Sendable (State) -> Void)?
+
+  /// 現在 listen 中の接続。stop() で一括キャンセルするため queue 上でのみ触る。
+  private var connections: [NWConnection] = []
 
   private static let headerSeparator = Data([0x0D, 0x0A, 0x0D, 0x0A]) // \r\n\r\n
 
@@ -49,22 +66,51 @@ public final class TestableServer: @unchecked Sendable {
   public func start() {
     let host = self.host
     let port = self.port
-    listener.stateUpdateHandler = { state in
-      if case .ready = state {
+    listener.stateUpdateHandler = { [weak self] state in
+      switch state {
+      case .ready:
         print("✅ TestableServer listening on http://\(host):\(port)")
-      } else if case .failed(let error) = state {
-        print("❌ TestableServer failed: \(error)")
+        self?.onStateChange?(.ready)
+      case .failed(let error):
+        // ポート競合（EADDRINUSE）など。従来は print のみで検知不能だった。
+        print("❌ TestableServer failed on \(host):\(port): \(error)")
+        self?.onStateChange?(.failed("\(error)"))
+      case .cancelled:
+        self?.onStateChange?(.cancelled)
+      default:
+        break
       }
     }
 
     let queue = self.queue
     listener.newConnectionHandler = { [weak self] connection in
       guard let self else { return }
+      // 接続を追跡し、完了/失敗時に取り除く（stop() での一括キャンセル用）。
+      connection.stateUpdateHandler = { [weak self] cState in
+        switch cState {
+        case .cancelled, .failed:
+          self?.queue.async { self?.connections.removeAll { $0 === connection } }
+        default:
+          break
+        }
+      }
+      self.queue.async { self.connections.append(connection) }
       connection.start(queue: queue)
       self.receive(from: connection)
     }
 
     listener.start(queue: queue)
+  }
+
+  /// graceful shutdown。listen 中の全接続と listener をキャンセルしてポートを解放する。
+  /// 完了は `onStateChange(.cancelled)` で通知される。多重呼び出しは安全（idempotent）。
+  public func stop() {
+    queue.async { [weak self] in
+      guard let self else { return }
+      self.connections.forEach { $0.cancel() }
+      self.connections.removeAll()
+      self.listener.cancel()
+    }
   }
 
   private func receive(from connection: NWConnection) {

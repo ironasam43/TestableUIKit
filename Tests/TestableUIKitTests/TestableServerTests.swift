@@ -143,4 +143,78 @@ final class TestableServerTests: XCTestCase {
     XCTAssertEqual(json["image_base64"], fakeImageData.base64EncodedString(),
                    "provider が返した Data が base64 で返る")
   }
+
+  // ----------------------------------------------------------------
+  // graceful shutdown（stop）・ポート競合検知（STEP 3 追加）
+  // ----------------------------------------------------------------
+
+  // start → ready 状態が onStateChange へ届く
+  func testStart_emitsReadyState() throws {
+    let testPort: UInt16 = 9801
+    let server = try TestableServer(port: testPort, registry: registry)
+    let readyExp = expectation(description: "ready state received")
+    server.onStateChange = { state in
+      if state == .ready { readyExp.fulfill() }
+    }
+    server.start()
+    wait(for: [readyExp], timeout: 2.0)
+    server.stop()
+  }
+
+  // stop() で graceful shutdown され .cancelled が届く
+  func testStop_emitsCancelledState() throws {
+    let testPort: UInt16 = 9802
+    let server = try TestableServer(port: testPort, registry: registry)
+    let readyExp = expectation(description: "ready")
+    let cancelledExp = expectation(description: "cancelled")
+    server.onStateChange = { state in
+      switch state {
+      case .ready: readyExp.fulfill()
+      case .cancelled: cancelledExp.fulfill()
+      default: break
+      }
+    }
+    server.start()
+    wait(for: [readyExp], timeout: 2.0)
+    server.stop()
+    wait(for: [cancelledExp], timeout: 2.0)
+  }
+
+  // stop() の多重呼び出しはクラッシュしない（idempotent）
+  func testStop_isIdempotent() throws {
+    let testPort: UInt16 = 9803
+    let server = try TestableServer(port: testPort, registry: registry)
+    let readyExp = expectation(description: "ready")
+    server.onStateChange = { state in
+      if state == .ready { readyExp.fulfill() }
+    }
+    server.start()
+    wait(for: [readyExp], timeout: 2.0)
+    server.stop()
+    server.stop()
+    server.stop()
+  }
+
+  // 同一ポートを 2 つ目のサーバが掴むと .failed が届く（ポート競合の挙動定義）
+  func testPortConflict_emitsFailedState() throws {
+    let testPort: UInt16 = 9804
+    let serverA = try TestableServer(port: testPort, registry: registry)
+    let aReady = expectation(description: "A ready")
+    serverA.onStateChange = { state in
+      if state == .ready { aReady.fulfill() }
+    }
+    serverA.start()
+    wait(for: [aReady], timeout: 2.0)
+
+    let serverB = try TestableServer(port: testPort, registry: TestableRegistry())
+    let bFailed = expectation(description: "B failed (port in use)")
+    serverB.onStateChange = { state in
+      if case .failed = state { bFailed.fulfill() }
+    }
+    serverB.start()
+    wait(for: [bFailed], timeout: 3.0)
+
+    serverB.stop()
+    serverA.stop()
+  }
 }

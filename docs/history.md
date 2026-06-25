@@ -2,6 +2,17 @@
 
 > 新規作成（2026-06-02）。これまでの作業は handoff_1.md より要約。
 
+## 2026-06-25 STEP3 配布・DX 整備の完走（inbox 消化）
+- inbox `2026-06-25-step3-distribution-dx.md`（HQ 発・消化モード: 直接）を消化。roadmap STEP3 のタスク 1〜7 のうち 6 件を完了。**5（Bundle ID 正式値確定）は HUMAN 判断待ち**（命名方針を `[ASK HUMAN]` で確認中・現状 `com.testable.*` 維持）。
+- **タスク6（堅牢化）**: `Sources/TestableUIKit/TestableServer.swift` に `State` enum（setup/ready/failed/cancelled）＋ `onStateChange` ハンドラ＋ `stop()` graceful shutdown を追加。ポート 8888 競合（EADDRINUSE）を `.failed` でプログラム的に検知可能化（従来は print のみ）。接続トラッキングで stop() 時に in-flight 接続も一括キャンセル。後方互換維持（既存 init シグネチャ不変）。XCTest +4（`testStart_emitsReadyState` / `testStop_emitsCancelledState` / `testStop_isIdempotent` / `testPortConflict_emitsFailedState`）→ **swift test 104 PASS**。
+- **タスク1**: `docs/getting-started.md` 新規（5分計装ガイド・Core/AnyTestable/Registry 注入の 3 部品・既知の罠①Registry 共有もれ②testID 重複③ポート競合を明記）。
+- **タスク2**: `docs/troubleshooting.md` 独立化（SETUP.md / README から抽出・拡充。サーバ起動/接続・ポート競合・多重起動・Registry 共有もれ・実機 LAN・Python ランナー）。README 旧 Troubleshooting 節はポインタ化。
+- **タスク3**: GitHub Release `v0.1.0` 作成（既存 push 済みタグから）。https://github.com/ironasam43/TestableUIKit/releases/tag/v0.1.0
+- **タスク4**: `README.md` 冒頭に getting-started バナー＋ドキュメント表を追加。
+- **タスク7**: `Example/`（`MyToggleExample.swift` ＋ `README.md`）新規。Package ビルド対象外のコピペ用最小サンプル（トグル計装の 3 部品完結）。
+- **roadmap 更新**: STEP3 を ✅ 完了へ、進捗サマリー（注記・ルート図）も整合更新。STEP2「SwiftUI 非対応」表記は project 側 roadmap には不在（既に ✅ 超過達成表記）。当該ドリフトは `Dev/docs/test-strategy.md` §7（スコープ外）に存在。
+- DoD: swift test 104 PASS（+4）/ pytest unit 59 PASS（baseline 維持）。pytest の 37 errors は live DemoApp 必須の integration（環境要因・回帰なし）。
+
 ## 2026-06-25 verify-queue.template.md symlink 配布（HQ 直接改修・doc-only）
 - `docs/verify-queue.template.md` を Dev/docs から相対 symlink で配布（全PJ完全パリティ）。書式正本への追従が自動化された。
 

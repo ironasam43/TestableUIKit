@@ -20,7 +20,7 @@
 
 ## 2. 現在地（到達済み）
 
-> **進捗注記（2026-06-23）**: 推奨ルートの想定（STEP1→2→3→4）に対し、実際は **STEP 2 が超過達成・STEP 4 が完走**し、**STEP 3（配布・DX）が部分残り**という逆転が起きている。詳細は各 STEP の見出しを参照。
+> **進捗注記（2026-06-23）**: 推奨ルートの想定（STEP1→2→3→4）に対し、実際は **STEP 2 が超過達成・STEP 4 が完走**し、**STEP 3（配布・DX）も完了**（2026-06-25）した。詳細は各 STEP の見出しを参照。
 
 **コア実装**:
 - `AnyTestable` protocol（testID / describedState / perform）✅
@@ -95,28 +95,24 @@
 
 ---
 
-### STEP 3: 配布・DX 整備 🟡 部分残り（全PJ展開の律速）
+### STEP 3: 配布・DX 整備 ✅ 完了（2026-06-25・Bundle ID のみ HUMAN 判断待ち）
 
 **内容**: オープンソース化・採用支援の基盤整備。SPM semver タグ付与、README getting-started、自作コンポーネント計装手順、最小サンプル、堅牢化（ポート競合・多重起動・エラー応答）
 
-**現状（2026-06-23）**: 
-- コア機能・実機対応は完成・CI green。SETUP.md / README に実機ペアリング・screenshot 経路の運用手順は明文化済み
-- ただし**外部利用者向けの配布パッケージング一式が未整備** → 本 STEP が **TestableUIKit の全PJ展開の律速**（`Dev/docs/test-strategy.md` §7 課題 B と整合）
-- ポート 8888 競合時の動作が未定義（graceful shutdown 未実装）
-- Bundle ID が placeholder 値
+**実績（2026-06-25・inbox `2026-06-25-step3-distribution-dx.md` 消化）**: 
+- 外部利用者向けの配布パッケージング一式を整備。コア機能・実機対応は STEP 4 で完成済み・CI green
+- ポート 8888 競合時の挙動を `TestableServer.State` ＋ `onStateChange` で定義、`stop()` で graceful shutdown 実装
 
-**完了条件**（残タスク）:
-1. ⬜ `docs/getting-started.md`：5分で自分のコンポーネントを計装可能な step-by-step ガイド
-2. 🟡 `docs/troubleshooting.md`：ポート競合・多重起動・タイムアウト時の対応（SETUP.md に一部記載あり・独立化は未）
-3. ⬜ GitHub Releases で semver タグ（v0.1.0 以降）を打付
-4. ⬜ README に getting-started へのリンク追加
-5. ⬜ Bundle ID を正式値に確定（社内 or community namespace）
-6. ⬜ TestableServer に graceful shutdown・エラーレスポンス改善
-7. ⬜ `Example/` ディレクトリに「自分のコンポーネントをテストする」サンプル
+**完了条件**:
+1. ✅ `docs/getting-started.md`：5分で自分のコンポーネントを計装可能な step-by-step ガイド（既知の罠①〜③明記）
+2. ✅ `docs/troubleshooting.md`：SETUP.md / README から独立化・拡充（ポート競合・多重起動・タイムアウト・Registry 共有もれ）
+3. ✅ GitHub Releases で semver タグ v0.1.0 を付与（https://github.com/ironasam43/TestableUIKit/releases/tag/v0.1.0）
+4. ✅ README に getting-started へのリンク追加（冒頭バナー＋ドキュメント表）
+5. 🟡 Bundle ID 正式値確定 — **HUMAN 判断待ち**（命名方針を `[ASK HUMAN]` で確認中。現状 `com.testable.*`）
+6. ✅ TestableServer に graceful shutdown（`stop()`）・状態通知（`onStateChange`）・ポート競合検知（`.failed`）。XCTest +4（104 PASS）
+7. ✅ `Example/`：自作コンポーネント計装の最小サンプル（`MyToggleExample.swift` ＋ README）
 
-**工数**: 小〜中（0.5〜1.5 セッション）
-
-**対応設計書**: 新規カテゴリ（対応設計書は STEP 3 開始時に作成予定）
+**対応設計書**: [Design 配布・DX](design.md) — STEP 3 で整備したドキュメント体系
 
 ---
 
@@ -145,7 +141,7 @@
 
 ## 4. 推奨ルート（当初計画）と実際の進行
 
-> **実際の進行（2026-06-23）**: STEP 1 ✅ → STEP 2 ✅（超過達成）→ **STEP 4 ✅（先行完走）** → STEP 3 🟡（部分残り・律速）。下記は当初計画。実際は実機対応（STEP 4）を価値実証のため前倒しで完走し、配布・DX（STEP 3）が外部公開の律速として残った。
+> **実際の進行（2026-06-23）**: STEP 1 ✅ → STEP 2 ✅（超過達成）→ **STEP 4 ✅（先行完走）** → STEP 3 ✅（2026-06-25 完了）。下記は当初計画。実際は実機対応（STEP 4）を価値実証のため前倒しで完走し、配布・DX（STEP 3）が外部公開の律速として残った。
 
 ```
 STEP 1（テストランナー昇格）✅
@@ -154,7 +150,7 @@ STEP 2（SwiftUI コンポーネント）✅ 超過達成
     ↓ [本丸完成 = 他人が組み込める]
     └─ 並行（一部）→ 堅牢化・簡易 STEP 3
     ↓
-STEP 3（配布・DX 整備）🟡 部分残り ← 現在の律速
+STEP 3（配布・DX 整備）✅ 完了（2026-06-25）
     ↓ [公開準備完成 = 誰でも使える]
 STEP 4（実機対応）✅ 先行完走（当初は「後回し可」）
 ```

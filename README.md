@@ -4,6 +4,24 @@ iOS/macOS 向けの UIコンポーネント自己申告型テストフレーム�
 
 **差別化：** Swift型システムとAIが融合した、コンポーネント自己申告型テストフレームワーク
 
+> 🚀 **はじめての方へ**: 自作コンポーネントを 5 分で計装する手順は
+> [`docs/getting-started.md`](docs/getting-started.md) を参照してください。
+> 最小の動くサンプルは [`Example/`](Example/README.md)、困ったときは
+> [`docs/troubleshooting.md`](docs/troubleshooting.md) にまとまっています。
+
+---
+
+## ドキュメント
+
+| ドキュメント | 内容 |
+|---|---|
+| [`docs/getting-started.md`](docs/getting-started.md) | 5 分で自作コンポーネントを計装する手順 |
+| [`Example/`](Example/README.md) | 自分のコンポーネントをテストする最小サンプル |
+| [`docs/ipc-protocol.md`](docs/ipc-protocol.md) | IPC プロトコル仕様 |
+| [`docs/troubleshooting.md`](docs/troubleshooting.md) | トラブルシューティング |
+| [`SETUP.md`](SETUP.md) | Xcode セットアップ手順（実機含む） |
+| [`docs/design.md`](docs/design.md) | 設計・アーキテクチャ |
+
 ---
 
 ## プロジェクト構成
@@ -233,32 +251,9 @@ TESTABLE_IPC_HOST=192.168.0.181 python3 run_test.py
 
 ## Troubleshooting
 
-### Q: `[SERVER] Started on...` が表示されない
-
-**A**: DemoApp が Simulator で起動していないか、server.start() が呼ばれていない。
-
-```
-Xcode > Console タブで確認
-```
-
-### Q: `curl: command not found`
-
-**A**: macOS には curl がデフォルト同梱。PATH 確認：
-
-```bash
-which curl
-/usr/bin/curl  # このように表示されれば OK
-```
-
-### Q: Python test が "Connection refused"
-
-**A**: iOS Simulator が localhost:8888 にリッスンしていない。
-
-```
-1. Xcode で Run して Simulator 起動を確認
-2. コンソールに [SERVER] メッセージ表示待ち
-3. python3 run_test.py 実行
-```
+トラブルシューティングは [`docs/troubleshooting.md`](docs/troubleshooting.md) に独立化しました。
+サーバ起動・接続、ポート 8888 競合、Registry 共有もれ、実機（LAN 越し）、Python ランナーなどの
+対処を網羅しています。
 
 ---
 
