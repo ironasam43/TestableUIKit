@@ -1,4 +1,4 @@
-最終更新：2026-06-24（**MCP サーバ B の Swift 化・SPM 公開（inbox 消化・フロー）**。Python 製 `mcp_server/` を独立 sub-package `mcp-swift/`（MCP swift-sdk）へ書き直し。swift-sdk は executable target に封じ込め、メイン `Package.swift` 不変＝library 依存ゼロ・iOS15 完全保全。`swift build` 警告ゼロ・`swift test` 41 PASS・MCP stdio handshake 実証（4 ツール登録確認）。実アプリ live パリティは VQ へ起票（Python 版と併走）。前回：semver `v0.1.0` タグ起票）
+最終更新：2026-06-25（**STEP3 タスク5 Bundle ID 確定 → STEP3 全7タスク完走・inbox クローズ**。HUMAN 判断で Bundle ID を `dev.plateworks.*` namespace に確定（`project.yml` 2箇所＋`ci.yml` simctl launch）。design.md placeholder ADR を Resolved 化・roadmap STEP3 タスク5 ✅。commit `0c025dc` push 済み。inbox `2026-06-25-step3-distribution-dx.md` 削除。前回：**MCP サーバ B の Swift 化・SPM 公開（inbox 消化・フロー）**。Python 製 `mcp_server/` を独立 sub-package `mcp-swift/`（MCP swift-sdk）へ書き直し。swift-sdk は executable target に封じ込め、メイン `Package.swift` 不変＝library 依存ゼロ・iOS15 完全保全。`swift build` 警告ゼロ・`swift test` 41 PASS・MCP stdio handshake 実証（4 ツール登録確認）。実アプリ live パリティは VQ へ起票（Python 版と併走）。前回：semver `v0.1.0` タグ起票）
 
 # TestableUIKit 作業メモ
 
@@ -27,11 +27,11 @@
 
 ## 現在地：STEP3 配布・DX 整備 6/7 完了（commit `70f000a` push 済み・Bundle ID のみ HUMAN 判断待ち）
 
-### ✅ STEP3 配布・DX 整備（2026-06-25・inbox `2026-06-25-step3-distribution-dx.md` 消化）
-- タスク 1〜7 のうち 6 件完了。**5（Bundle ID 正式値確定）は HUMAN 判断待ち**（命名方針を `[ASK HUMAN]` で確認中・初回 askHuman はタイムアウト・現状 `com.testable.*` 維持）。確定後 `project.yml` の `PRODUCT_BUNDLE_IDENTIFIER`（2 箇所）を更新→コミットで完全クローズ。
+### ✅ STEP3 配布・DX 整備（2026-06-25・inbox `2026-06-25-step3-distribution-dx.md` 消化完了）
+- **全7タスク完走・inbox クローズ**。タスク5（Bundle ID）は HUMAN 判断で `dev.plateworks.*` namespace に確定（`project.yml` 2箇所＋`ci.yml` simctl launch・commit `0c025dc` push 済み）。design.md placeholder ADR を Resolved 化・roadmap STEP3 タスク5 ✅。inbox ファイル削除済み。
 - `TestableServer.swift`: `State` enum＋`onStateChange`＋`stop()` graceful shutdown 追加。ポート 8888 競合を `.failed` で検知可能化（後方互換維持）。XCTest +4 → **swift test 104 PASS**。
 - `docs/getting-started.md`（新規・5分計装ガイド）/ `docs/troubleshooting.md`（独立化）/ `Example/MyToggleExample.swift`（最小サンプル）/ README リンク＋ドキュメント表 / GitHub Release `v0.1.0` 作成 / roadmap STEP3 ✅ 更新。
-- DoD: swift 104 PASS / pytest unit 59 PASS（baseline 維持）。inbox ファイルは #5 完了まで残置。
+- DoD: swift 104 PASS / pytest unit 59 PASS（baseline 維持）。タスク5は project.yml/ci.yml/docs のみの変更でロジック不変＝既存 green 維持。
 - 補足: STEP2「SwiftUI 非対応」ドリフトは project 側 roadmap には不在（既に ✅ 表記）。当該表記は `Dev/docs/test-strategy.md` §7（スコープ外）→ 必要なら Dev/ 側で修正。
 
 ## 現在地（前）：実機テスト基盤 完全クローズ（4/4 ツール実機 e2e・VQ 未確認 0 件）
@@ -55,7 +55,7 @@
 3. ✅ **screenshot 経路の整理** （2026-06-23）: 実機=`GET /screenshot`・Simulator=simctl フォールバックの二経路を SETUP.md ステップ7 ＋ README.md に明文化。経路選択ルール・混乱防止・整備完了
 
 ## 🔄 積み残し
-- **STEP3 タスク5（Bundle ID）HUMAN 判断待ち**: inbox `2026-06-25-step3-distribution-dx.md` は #5 未決のため残置。命名方針（com.testable.* 維持 / io.github.ironasam43.* / com.ironasam43.* / その他）を `[ASK HUMAN]` で確認中。決定後に `project.yml` 更新→コミット→inbox 削除で完全クローズ。
+- ~~STEP3 タスク5（Bundle ID）~~ ✅ 完了（`dev.plateworks.*` 確定・inbox クローズ）。**注意**: bundle ID 変更後の `xcodegen generate`＋実機/Simulator への再インストールは未実施（`*.xcodeproj` は git 非追跡で再生成のため、次回ビルド時に自動反映される）。CI は simctl launch ターゲットを更新済み。
 - **VQ 未確認 1 件**（2026-06-24 起票）: MCP Swift 版（`mcp-swift/`）の 4 ツール live パリティ（起動中 DemoApp に対する実 HTTP 中継成功パス）を実機/Simulator で確認。protocol-level＋Core 純関数 41 XCTest は機械検証済み。合格で Python 版 `mcp_server/` 廃止条件①を満たす。
 - **Python 版 `mcp_server/` は併走中**。廃止条件＝①live パリティ確認（VQ）②CI に `cd mcp-swift && swift test` 組込 green ③README/SETUP 起動手順を Swift 版へ一本化。`docs/design.md` §E2 参照。
 - **CI 未配線**: `mcp-swift/` の `swift test` は手元のみ。`.github/workflows/ci.yml` への組込は次タスク候補（廃止条件②）。

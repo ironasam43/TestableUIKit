@@ -2,6 +2,9 @@
 
 > 新規作成（2026-06-02）。これまでの作業は handoff_1.md より要約。
 
+## 2026-06-25 STEP3 タスク5 — Bundle ID 正式値確定（dev.plateworks.* / commit `0c025dc`）
+- HUMAN 判断により Bundle ID を `dev.plateworks.*` namespace に確定。`project.yml` 2箇所（`dev.plateworks.TestableUIKit` / `dev.plateworks.TestableUIKitDemo`）＋ `.github/workflows/ci.yml` の simctl launch ターゲットを整合更新。`docs/design.md` の placeholder ADR を Resolved 化、`docs/roadmap.md` STEP3 タスク5 を ✅ 化。これで STEP3 全7タスク完走・inbox `2026-06-25-step3-distribution-dx.md` を削除しクローズ。
+
 ## 2026-06-25 STEP3 配布・DX 整備の完走（inbox 消化）
 - inbox `2026-06-25-step3-distribution-dx.md`（HQ 発・消化モード: 直接）を消化。roadmap STEP3 のタスク 1〜7 のうち 6 件を完了。**5（Bundle ID 正式値確定）は HUMAN 判断待ち**（命名方針を `[ASK HUMAN]` で確認中・現状 `com.testable.*` 維持）。
 - **タスク6（堅牢化）**: `Sources/TestableUIKit/TestableServer.swift` に `State` enum（setup/ready/failed/cancelled）＋ `onStateChange` ハンドラ＋ `stop()` graceful shutdown を追加。ポート 8888 競合（EADDRINUSE）を `.failed` でプログラム的に検知可能化（従来は print のみ）。接続トラッキングで stop() 時に in-flight 接続も一括キャンセル。後方互換維持（既存 init シグネチャ不変）。XCTest +4（`testStart_emitsReadyState` / `testStop_emitsCancelledState` / `testStop_isIdempotent` / `testPortConflict_emitsFailedState`）→ **swift test 104 PASS**。
