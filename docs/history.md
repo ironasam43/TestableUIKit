@@ -2,6 +2,10 @@
 
 > 新規作成（2026-06-02）。これまでの作業は handoff_1.md より要約。
 
+## 2026-06-25 verify-queue 書式正規化（HQ 直接改修・doc-only）
+
+- `docs/verify-queue.md` をワークスペース統一書式へ整形（HUMAN 合意・HQ＝Dev/ タブが直接実施）。正規化ヘッダ（書式ガイド＋3状態モデル・**退避2日**）を導入し、MCP Swift 版 4ツール live パリティの起票行を新書式（操作/着眼/合格 の3クローズ＋`└ 詳細`、build に紐づかない残余はラベル太字で代替）へ整形。起票内容は不変で体裁のみ。
+
 ## サマリー
 
 - **M-1 IPC層検証** ✅: JSONValue（single value container）/ AnyTestable / TestableServer（NWListener, strict-concurrency PASS）/ CLI executable 実装。`swift build` / `swift test`(6) / `run_test.py` で wire format 実証。
