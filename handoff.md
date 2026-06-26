@@ -1,4 +1,4 @@
-最終更新：2026-06-25（**STEP3 タスク5 Bundle ID 確定 → STEP3 全7タスク完走・inbox クローズ**。HUMAN 判断で Bundle ID を `dev.plateworks.*` namespace に確定（`project.yml` 2箇所＋`ci.yml` simctl launch）。design.md placeholder ADR を Resolved 化・roadmap STEP3 タスク5 ✅。commit `0c025dc` push 済み。inbox `2026-06-25-step3-distribution-dx.md` 削除。前回：**MCP サーバ B の Swift 化・SPM 公開（inbox 消化・フロー）**。Python 製 `mcp_server/` を独立 sub-package `mcp-swift/`（MCP swift-sdk）へ書き直し。swift-sdk は executable target に封じ込め、メイン `Package.swift` 不変＝library 依存ゼロ・iOS15 完全保全。`swift build` 警告ゼロ・`swift test` 41 PASS・MCP stdio handshake 実証（4 ツール登録確認）。実アプリ live パリティは VQ へ起票（Python 版と併走）。前回：semver `v0.1.0` タグ起票）
+最終更新：2026-06-26（**課題A: state 宣言型 高レベル API 実装・push 済み（commit `2e4dbac`）**。inbox `2026-06-25-issue-a-state-declarative-api.md`（HQ 発・消化モード: フロー）を消化。Tier1 `TestableComponent<State>`（`TestableProperty` get/set ＋ `runTestablePerform` ＋ Mirror describe フォールバック）と Tier2 drop-in 5種（Toggle/TextField/Stepper/Slider/Button・binding 自動導出）を追加し②AnyTestable 手書き switch を全廃。既存手書き経路は温存（後方互換）。Example 2本（MyToggle を Tier1 へ書き直し / StandardControls 新規）・XCTest +13 → `swift test` 117 PASS。**検収必要のため inbox を done/ へ移動・`sendNote(done)` 送付＝HQ accepted 待ち**。STEP3 タスク5 Bundle ID 確定 → STEP3 全7タスク完走・inbox クローズ。HUMAN 判断で Bundle ID を `dev.plateworks.*` namespace に確定（`project.yml` 2箇所＋`ci.yml` simctl launch）。design.md placeholder ADR を Resolved 化・roadmap STEP3 タスク5 ✅。commit `0c025dc` push 済み。inbox `2026-06-25-step3-distribution-dx.md` 削除。前回：**MCP サーバ B の Swift 化・SPM 公開（inbox 消化・フロー）**。Python 製 `mcp_server/` を独立 sub-package `mcp-swift/`（MCP swift-sdk）へ書き直し。swift-sdk は executable target に封じ込め、メイン `Package.swift` 不変＝library 依存ゼロ・iOS15 完全保全。`swift build` 警告ゼロ・`swift test` 41 PASS・MCP stdio handshake 実証（4 ツール登録確認）。実アプリ live パリティは VQ へ起票（Python 版と併走）。前回：semver `v0.1.0` タグ起票）
 
 # TestableUIKit 作業メモ
 
@@ -25,7 +25,17 @@
 - **Design D 実機 Wi-Fi 越し疎通成立 ＋ MCP live PoC（3/4 ツール実機駆動）** ✅（2026-06-23）— **実機 iPhone `192.168.0.181` に MCP tool を直接駆動。ui_ping/ui_getState/ui_perform(count 0→1) を実機 e2e 実証・消し込み。ui_screenshot のみ simctl(Simulator)依存で実機不可＝別行で継続。全 8 commit push 済み・CI run `27989218172` 全3ジョブ green**
 - **`ui_screenshot` 実機対応実装（経路A: GET /screenshot + screenshotProvider 注入）** ✅（2026-06-23）— **TestableServer に screenshotProvider 注入 + GET /screenshot 追加、DemoApp に UIKit key window キャプチャ closure 注入、Python 側 GET /screenshot 一次経路化＋simctl フォールバック。swift test 100 PASS / pytest 59 PASS / commit `78716fd`。実機での実 PNG 取得確認は VQ へ起票（DemoApp 再インストール後）**
 
-## 現在地：STEP3 配布・DX 整備 6/7 完了（commit `70f000a` push 済み・Bundle ID のみ HUMAN 判断待ち）
+## 現在地：課題A 高レベル API 実装・push 済み（commit `2e4dbac`・HQ 検収待ち）
+
+### ✅ 課題A: state 宣言型 高レベル API（2026-06-26・inbox `2026-06-25-issue-a-state-declarative-api.md` 消化・フロー）
+- **目的**: 計装コストの線形増加の犯人＝②AnyTestable 手書き switch ボイラープレートを 2 Tier の高レベル public API で畳む。既存手書き経路は温存（後方互換・回帰なし）。
+- **Tier1 `Sources/TestableUIKit/TestableComponent.swift`（新規）**: `TestableProperty<State>`（get/set ＋ `.bool/.int/.double/.string` の WritableKeyPath 便宜コンストラクタ）／共有 `runTestablePerform`（getState/setProperty/commands 表/else unknownCommand throw）／`mirrorDescribe`（describe 省略時に自前値型 stored property を自動 describe・private SwiftUI 型に非接触）／`@MainActor public final class TestableComponent<State>: ObservableObject, AnyTestable`。
+- **Tier2 `Sources/TestableUIKit/TestableControls.swift`（新規）**: internal `BindingTestable<Value>` ＋ public View 5種 `TestableToggle`/`TestableTextField`/`TestableStepper`/`TestableSlider`/`TestableButton`（binding 自動導出・registry 自動登録）。
+- **サンプル**: `Example/MyToggleExample.swift` を Tier1 へ書き直し（②class 全廃）／`Example/StandardControlsExample.swift` 新規（Tier2 5種）。**テスト**: `TestableComponentTests.swift`（8件）＋ `TestableControlsTests.swift`（5件）。
+- DoD: `swift test` **117 PASS（+13）/ 0 failure**。iOS15・library 依存ゼロ維持。DemoApp 不変＝ビルド番号 bump なし。README / docs/getting-started.md に 2 Tier の使い分け追記。
+- **状態**: inbox を `inbox/done/` へ移動・`sendNote(done)` 送付済み → **HQ の accepted 待ち**（accepted で ProjectDeck が done/ ファイルを自動削除）。
+
+## 現在地（前）：STEP3 配布・DX 整備 6/7 完了（commit `70f000a` push 済み・Bundle ID のみ HUMAN 判断待ち）
 
 ### ✅ STEP3 配布・DX 整備（2026-06-25・inbox `2026-06-25-step3-distribution-dx.md` 消化完了）
 - **全7タスク完走・inbox クローズ**。タスク5（Bundle ID）は HUMAN 判断で `dev.plateworks.*` namespace に確定（`project.yml` 2箇所＋`ci.yml` simctl launch・commit `0c025dc` push 済み）。design.md placeholder ADR を Resolved 化・roadmap STEP3 タスク5 ✅。inbox ファイル削除済み。
@@ -55,6 +65,8 @@
 3. ✅ **screenshot 経路の整理** （2026-06-23）: 実機=`GET /screenshot`・Simulator=simctl フォールバックの二経路を SETUP.md ステップ7 ＋ README.md に明文化。経路選択ルール・混乱防止・整備完了
 
 ## 🔄 積み残し
+- **課題A 検収待ち**: inbox `inbox/done/2026-06-25-issue-a-state-declarative-api.md`・`sendNote(done)` 送付済み。HQ が API 形・②削減効果を裏取りして accepted/rejected を返す。accepted で done/ 自動削除。
+- **申し送り（Swift 6 言語モード・非ブロッキング）**: 課題Aの `@MainActor` generic class（`TestableComponent<State>`/`BindingTestable<Value>`）の `AnyTestable` 準拠に language mode 5.9 で `#ConformanceIsolation` 警告（Swift 6 言語モードではエラー化）。5.9 では警告止まりで build/test 非ブロック。将来 Swift 6 へ上げる際は `CLIDemoLoginButton` 同様の `@unchecked Sendable`+`NSLock` パターンへ寄せる検討が必要。
 - ~~STEP3 タスク5（Bundle ID）~~ ✅ 完了（`dev.plateworks.*` 確定・inbox クローズ）。**注意**: bundle ID 変更後の `xcodegen generate`＋実機/Simulator への再インストールは未実施（`*.xcodeproj` は git 非追跡で再生成のため、次回ビルド時に自動反映される）。CI は simctl launch ターゲットを更新済み。
 - **VQ 未確認 1 件**（2026-06-24 起票）: MCP Swift 版（`mcp-swift/`）の 4 ツール live パリティ（起動中 DemoApp に対する実 HTTP 中継成功パス）を実機/Simulator で確認。protocol-level＋Core 純関数 41 XCTest は機械検証済み。合格で Python 版 `mcp_server/` 廃止条件①を満たす。
 - **Python 版 `mcp_server/` は併走中**。廃止条件＝①live パリティ確認（VQ）②CI に `cd mcp-swift && swift test` 組込 green ③README/SETUP 起動手順を Swift 版へ一本化。`docs/design.md` §E2 参照。
