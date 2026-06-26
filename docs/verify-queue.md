@@ -17,6 +17,10 @@
 
 ---
 
+- [ ] **macOS Demo e4bfb1f** ｜操作: `swift run TestableUIKitMacDemo` でデモ起動 → ウィンドウの5コンポーネント（Counter/TextInput/OnOffSwitch/RangeSlider/Button）を目視 ｜着眼: レイアウト崩れ・重なり・テキスト欠落がないか ｜合格: 全5コンポーネントが可読な状態で縦並びに表示されている
+    └ 詳細: signature/寸法/byte長/実描画の機械確認は完了（1800×1364px @2x・46,280bytes・PNG✅）。残るのは「見た目の正しさ」のみ。HTTP e2e（ping/getState/perform/screenshot）はすべてログで断定済み。
+- [ ] **macOS Demo e4bfb1f** ｜操作: `swift run TestableUIKitMacDemo` 起動後、画面上ボタン（Increment・Login・Apply 等）をクリック ｜着眼: ボタン押下がサーバ側 perform と同等の状態変化を UI に反映するか ｜合格: カウンタ加算・スライダ反映など UI が即座に更新される
+    └ 詳細: HTTP POST /perform(increment) での 0→1 は e2e 断定済み。残るは GUI クリック → SwiftUI @State 更新の配線確認（HTTP 非経路・目視のみ）。
 - [ ] **MCP Swift 版 4ツール live パリティ** ｜操作: 実機（`TESTABLE_IPC_HOST=<実機IP> cd mcp-swift && swift run TestableUIKitMCP`）or Simulator（`swift run TestableUIKitMCP`）で起動した MCP サーバに ui_ping→ui_getState(`scene.demo.counter`)→ui_perform(increment)→ui_getState→ui_screenshot を順に呼ぶ ｜着眼: 各ツールの戻り値 ｜合格: ui_ping=`{"status":"ok"}`／getState=describedState dict／perform 後 count 0→1／screenshot=非空 PNG。Python 版と同一結果（パリティ成立）
     └ 詳細: protocol-level（stdio handshake・tools/list・tools/call の graceful fail）と Core 純関数 41 XCTest は機械検証済み。残るは起動中 DemoApp への実 HTTP 中継成功パス。合格後 Python 版 `mcp_server/` 廃止条件①を満たす。
 
