@@ -15,6 +15,10 @@ let package = Package(
     .executable(
       name: "TestableUIKitDemo",
       targets: ["TestableUIKitDemo"]
+    ),
+    .executable(
+      name: "TestableUIKitMacDemo",
+      targets: ["TestableUIKitMacDemo"]
     )
   ],
   dependencies: [],
@@ -28,6 +32,11 @@ let package = Package(
       name: "TestableUIKitDemo",
       dependencies: ["TestableUIKit"],
       path: "Sources/TestableUIKitDemo"
+    ),
+    .executableTarget(
+      name: "TestableUIKitMacDemo",
+      dependencies: ["TestableUIKit"],
+      path: "Sources/TestableUIKitMacDemo"
     ),
     .testTarget(
       name: "TestableUIKitTests",

@@ -90,3 +90,19 @@
 - **依存分離の確認**: ルート `swift build` ではメイン package グラフのみ解決され swift-sdk は出現しない（`mcp-swift/` は別パッケージ）。両グラフが交わらないことが分離成立条件。`Package.resolved` も追跡（再現性）。
 - `docs/design.md` に §E2「MCP サーバ Swift 化」を追記（分離理由・ターゲット構成・起動方法・Python 版廃止条件）。
 - **残**: 実アプリ応答の成功パス（起動中 DemoApp に対する 4 ツール live 駆動パリティ）は実機/Simulator 前提のため VQ へ起票。Python 版 `mcp_server/` は廃止条件（live パリティ確認＋CI 組込＋ドキュメント一本化）を満たすまで併走。
+
+## 2026-06-26 macOS デモ e2e 実証（TestableUIKitMacDemo・4ツール機械検証）
+- **概要**: 前サイクルで作成済みの macOS 対応コード（`Sources/TestableUIKitMacDemo/`・`Package.swift` 変更）を DoD まで完走。build→test→e2e→commit/docs を一括実施。
+- **追加ファイル**:
+  - `Sources/TestableUIKitMacDemo/MacDemoApp.swift`（177行）: macOS SwiftUI アプリエントリ。`TestableServer(port:screenshotProvider:)` に AppKit bitmap provider（`bitmapImageRepForCachingDisplay`→PNG）を注入して起動。
+  - `Sources/TestableUIKitMacDemo/MacComponents.swift`（356行）: Button/Counter/TextInput/OnOffSwitch/RangeSlider の5コンポーネントを計装（`.testable()` / `TestableRegistry`）。
+  - `e2e_macdemo.sh`: 再現可能な e2e スクリプト（curl 8ステップ）。`bash e2e_macdemo.sh` で build→test→MacDemo起動→4ツール検証→クリーンアップを完走。
+  - `Package.swift` 変更: `TestableUIKitMacDemo` executable target 追加（platforms: macOS 13.0+）。
+- **e2e 機械検証結果**（curl で全数値断定・偽 PASS なし）:
+  - `GET /ping` → `{"status":"ok"}` HTTP 200（起動後 2秒以内）
+  - `POST /perform getState(scene.demo.counter)` → HTTP 200 `{"count":0,"isEnabled":true}`（登録確認・count==0）
+  - `POST /perform increment` → HTTP 200・再 getState で `count==1`（0→1 確定）
+  - `GET /screenshot` → HTTP 200・base64 復号 PNG：signature `89504e47 0d0a1a0a` ✅・寸法 1800×1364 px（Retina @2x）・46,280 bytes
+- **ライブラリ本体**: 不変（状態レス・iOS15/後方互換温存・既存手書き経路温存）。`swift test` **117 PASS / 0 failures**（前回から変化なし）。
+- **設計判断（AppKit screenshot 注入）**: `ScreenshotProvider = @MainActor @Sendable () async throws -> Data` closure をアプリ層（`MacDemoApp.swift`）から注入。ライブラリは UIKit/AppKit に非依存のまま。iOS 版 DemoApp と同一パターン（注入点の一本化）。
+- **VQ 起票**: screenshot の視覚的正しさ（5コンポーネントのレイアウト崩れ有無）のみ起票（signature＋寸法＋byte長＋実描画は機械確認済み）。GUI クリック→perform 配線の体感は別 VQ 行で起票。
