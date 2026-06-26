@@ -1,6 +1,10 @@
-## SETUP.md / README.md 実機（LAN 越し）運用ドキュメント整備
-- [x] 問題分析（一次情報確認：ipc_helpers.py / testableui_mcp.py / DemoApp.swift / TestableServer.swift / SETUP.md / README.md / docs/design.md §D / docs/ipc-protocol.md）
-- [x] Step 1: SETUP.md に「ステップ7：実機（LAN 越し）での実行」節を追加（前提・LAN 公開仕組み・IP 確認・env 変数設定・screenshot 経路・実機トラブルシュート）
-- [x] Step 2: README.md 3点修正（実機サブ節追加・バックログ完了マーク・アーキテクチャ図1行修正）
-- [x] Step 3 & 4: `docs/history.md` に本タスク完了エントリ追記
-- [x] Step 5: `handoff.md` 更新（次ステップ2・3 ✅ へ）
+## 課題A: state 宣言型 高レベル API（Tier1 TestableComponent / Tier2 drop-in）
+- [x] 問題分析
+- [x] Step 1: TestableComponent.swift（Tier1: TestableProperty / runTestablePerform / Mirror describe / TestableComponent）
+- [x] Step 2: TestableControls.swift（Tier2: BindingTestable ＋ drop-in 5種）
+- [x] Step 3: Example/MyToggleExample.swift を Tier1 で書き直し（②手書き class 削除）
+- [x] Step 4: Example/StandardControlsExample.swift 新規（Tier2 5種サンプル）
+- [x] Step 5: テスト追加（Tier1 8件 / Tier2 5件 = +13件）
+- [x] Step 6: README / getting-started に 3 Tier 使い分け追記
+- [x] ビルド確認（swift build エラー0 / swift test 117 PASS・0 failure）
+- 備考: 生成 generic `@MainActor ... AnyTestable` は Swift6 言語モードでの ConformanceIsolation **警告**のみ（5.9 モードではビルド/テストともに green。Phase2 [WARN] は実害なしと確認）。

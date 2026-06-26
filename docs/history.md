@@ -2,6 +2,16 @@
 
 > 新規作成（2026-06-02）。これまでの作業は handoff_1.md より要約。
 
+## 2026-06-26 課題A — state 宣言型 高レベル API（Tier1 TestableComponent / Tier2 drop-in 5種）
+- inbox `2026-06-25-issue-a-state-declarative-api.md`（HQ 発・消化モード: フロー）を消化。計装コストの線形増加（②AnyTestable 手書き switch ボイラープレート）を畳む 2 Tier の高レベル public API を追加。既存 `AnyTestable` 手書き経路は温存（後方互換・回帰なし）。
+- **Tier 1 `Sources/TestableUIKit/TestableComponent.swift`（新規）**: `TestableProperty<State>`（get/set ペア＋`.bool/.int/.double/.string` の WritableKeyPath 便宜コンストラクタ）／共有 `runTestablePerform`（getState→describe・setProperty→properties 経由・commands 表・else unknownCommand throw）／`mirrorDescribe`（describe 省略時に state の Bool/Int/Double/String stored property を Mirror で自動 describe・自前値型限定で private SwiftUI 型に非接触）／`@MainActor public final class TestableComponent<State>: ObservableObject, AnyTestable`。これで②手書き switch が消滅。
+- **Tier 2 `Sources/TestableUIKit/TestableControls.swift`（新規）**: internal `BindingTestable<Value>` ＋ public View 5種 `TestableToggle`/`TestableTextField`/`TestableStepper`/`TestableSlider`/`TestableButton`（binding／action ＋ id を受け環境 registry へ自動登録。①Core も不要のゼロボイラープレート）。
+- **サンプル**: `Example/MyToggleExample.swift` を Tier1 で書き直し（②class を丸ごと削除し `@StateObject TestableComponent` 宣言 1 つに縮退）／`Example/StandardControlsExample.swift` 新規（Tier2 全5種）。
+- **テスト**: `Tests/TestableUIKitTests/TestableComponentTests.swift`（8件・Tier1 round-trip / Mirror fallback / unknownCommand throw）＋ `TestableControlsTests.swift`（5件・Tier2 binding 自動導出 round-trip）。
+- DoD: `swift test` **117 PASS（+13）/ 0 failure**。iOS15・library 依存ゼロ維持（SwiftUI/Combine は既存 import・Mirror は stdlib／自前値型限定）。DemoApp app 不変のため CURRENT_PROJECT_VERSION bump なし。
+- **申し送り（非ブロッキング）**: language mode 5.9 では `@MainActor` generic class の `AnyTestable` 準拠に `#ConformanceIsolation` 警告（Swift 6 言語モードではエラー化）が出るが 5.9 では警告止まりで build/test を一切ブロックしない。将来 Swift 6 言語モードへ上げる際は `CLIDemoLoginButton` 同様の `@unchecked Sendable`+`NSLock` パターンへ寄せる検討が必要。
+- 検収必要チケットのため inbox を `inbox/done/` へ移動・`sendNote(done)` 送付。HQ の accepted で完全クローズ。
+
 ## 2026-06-25 STEP3 タスク5 — Bundle ID 正式値確定（dev.plateworks.* / commit `0c025dc`）
 - HUMAN 判断により Bundle ID を `dev.plateworks.*` namespace に確定。`project.yml` 2箇所（`dev.plateworks.TestableUIKit` / `dev.plateworks.TestableUIKitDemo`）＋ `.github/workflows/ci.yml` の simctl launch ターゲットを整合更新。`docs/design.md` の placeholder ADR を Resolved 化、`docs/roadmap.md` STEP3 タスク5 を ✅ 化。これで STEP3 全7タスク完走・inbox `2026-06-25-step3-distribution-dx.md` を削除しクローズ。
 

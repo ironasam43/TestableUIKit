@@ -11,7 +11,100 @@ HTTP IPC（`localhost:8888`）経由で外部（テストランナー・AI エ�
 
 ---
 
+## 3 つの API 段階（どれを使うか）
+
+計装の書き方には抽象度の異なる 3 段階があります。**まず上から検討**し、合わなければ下に降りてください。
+
+| Tier | API | 向いている対象 | 必要な部品 |
+|---|---|---|---|
+| **Tier 2** | `TestableToggle` / `TestableTextField` / `TestableStepper` / `TestableSlider` / `TestableButton` | 標準 SwiftUI コントロール | View を差し替えるだけ（state 値型もブリッジも不要） |
+| **Tier 1** | `TestableComponent<State>` | 自作コンポーネント（state 値型を持つ） | state 値型 ＋ `properties` / `commands` の宣言（手書き `perform` switch 不要） |
+| **Tier 0** | `AnyTestable` 手書き準拠 | 特殊な計装（ロック制御・cross-process 等） | `testID` / `describedState` / `perform` を自前実装 |
+
+- **Tier 2**: 標準コントロールなら最速。`TestableToggle("通知", isOn: $isOn, id: "x")` のように書くだけで自動計装されます（後述「Tier 2」）。
+- **Tier 1**: 自作 state を持つコンポーネントは `TestableComponent<State>` を宣言します。`describe` 省略時は `properties`、それも無ければ Mirror で値型プロパティ（Bool/Int/Double/String）を自動 describe します（後述「Tier 1」）。
+- **Tier 0**: 以降の「全体像（3 つの部品）」が Tier 0 の書き方です。最大の自由度が要るときだけ使います。
+
+---
+
+## Tier 2：標準コントロールを即計装する
+
+標準 SwiftUI コントロールは、対応する `Testable*` View へ置き換えるだけで計装できます。
+
+```swift
+import TestableUIKit
+
+struct SettingsView: View {
+  @State private var isOn = false
+  @State private var name = ""
+  @State private var qty = 0
+
+  var body: some View {
+    VStack {
+      TestableToggle("通知", isOn: $isOn, id: "settings.toggle")
+      TestableTextField("名前", text: $name, id: "settings.name")
+      TestableStepper("数量: \(qty)", value: $qty, id: "settings.qty")
+      TestableButton("保存", id: "settings.save") { /* action */ }
+    }
+    .environment(\.testableRegistry, registry)  // ★ registry 注入は Tier 0/1 と同じ
+  }
+}
+```
+
+各コントロールが受け付けるコマンド:
+
+| View | コマンド | describe キー |
+|---|---|---|
+| `TestableToggle` | `toggle` / `setProperty` | `isOn` |
+| `TestableTextField` | `setProperty` | `text` |
+| `TestableStepper` | `increment` / `decrement` / `setProperty` | `value` |
+| `TestableSlider` | `setProperty` | `value` |
+| `TestableButton` | `tap` | `tapCount` |
+
+> registry 注入（`.environment(\.testableRegistry, registry)` ＋ サーバへ同じ registry）は全 Tier 共通です（後述ステップ 3）。動くサンプルは [`Example/StandardControlsExample.swift`](../Example/StandardControlsExample.swift)。
+
+---
+
+## Tier 1：自作コンポーネントを `TestableComponent` で計装する
+
+自作の state 値型を持つコンポーネントは、手書きの `AnyTestable` ブリッジ class を書かずに
+`TestableComponent<State>` を宣言するだけで計装できます。
+
+```swift
+import TestableUIKit
+
+struct MyToggleState { var isOn = false }
+
+struct MyToggleView: View {
+  @StateObject private var toggle = TestableComponent<MyToggleState>(
+    id: "example.my.toggle",
+    state: MyToggleState(),
+    properties: ["isOn": .bool(\.isOn)],            // describe ＋ setProperty を自動生成
+    commands: ["toggle": { s, _ in s.isOn.toggle() }]
+  )
+
+  var body: some View {
+    Toggle("My Toggle", isOn: Binding(
+      get: { toggle.state.isOn },
+      set: { _ in Task { _ = try? await toggle.perform(commandName: "toggle", parameters: .null) } }
+    ))
+    .testable(toggle)
+  }
+}
+```
+
+- `properties`: `TestableProperty<State>` の辞書。`.bool/.int/.double/.string(\.keyPath)` で KeyPath から get/set を自動生成（型不一致は throw）。
+- `commands`: コマンド名 → `(inout State, JSONValue) throws -> Void`。
+- `describe`: 省略すると `properties` → なければ Mirror フォールバック（値型プロパティのみ）で導出。
+- `getState` / `setProperty` は自動でハンドリングされます。
+
+> 動くサンプルは [`Example/MyToggleExample.swift`](../Example/MyToggleExample.swift)。旧版で必要だった「手書き `AnyTestable` ブリッジ class（`perform` の switch）」は不要になりました。
+
+---
+
 ## 全体像（3 つの部品）
+
+> ここからは **Tier 0（`AnyTestable` 手書き）** の書き方です。Tier 1/2 で足りない特殊計装のときに使います。
 
 計装に必要なのは次の 3 つです。
 

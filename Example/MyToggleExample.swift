@@ -1,10 +1,13 @@
 // MyToggleExample.swift
 //
-// 自作 SwiftUI コンポーネント（トグル）を TestableUIKit で計装する最小サンプル。
-// 計装に必要な 3 部品を 1 ファイルにまとめています。
+// 自作 SwiftUI コンポーネント（トグル）を TestableUIKit で計装する最小サンプル（Tier 1）。
 //
 // ※ このファイルは Swift Package のビルド対象外（Example/ は Sources/ の外）です。
 //    自分のプロジェクトへコピペして使ってください。実行手順は docs/getting-started.md 参照。
+//
+// ＝＝＝ Tier 1（state 宣言型 高レベル API）＝＝＝
+// 旧版で必要だった「② AnyTestable ブリッジ class（@Published ↔ Core ＋ 手書き perform switch）」が
+// 不要になりました。state 値型と TestableComponent の宣言（properties / commands）だけで計装できます。
 
 import SwiftUI
 import TestableUIKit
@@ -15,73 +18,35 @@ struct MyToggleState {
   var isOn: Bool = false
 }
 
-/// describedState を生成する純粋関数
-func makeMyToggleDescribedState(_ s: MyToggleState) -> [String: JSONValue] {
-  ["isOn": .bool(s.isOn)]
-}
-
-/// toggle コマンド処理（ON/OFF 反転）
-func applyMyToggle(to s: inout MyToggleState) {
-  s.isOn.toggle()
-}
-
-/// setProperty コマンド処理（key="isOn" の bool を設定）
-func applyMyToggleSetProperty(to s: inout MyToggleState, parameters: JSONValue) throws {
-  guard case .object(let dict) = parameters,
-        case .string(let key) = dict["key"],
-        let value = dict["value"] else {
-    throw TestError.invalidParameters
-  }
-  switch key {
-  case "isOn":
-    guard case .bool(let b) = value else { throw TestError.invalidParameters }
-    s.isOn = b
-  default:
-    throw TestError.unknownCommand("setProperty.\(key)")
-  }
-}
-
-// MARK: - ② AnyTestable ブリッジ（@Published ↔ Core struct・perform を Core へ委譲）
-
-@MainActor
-final class MyToggle: ObservableObject, AnyTestable {
-  let testID = "example.my.toggle"   // 一意な ID。IPC でこの ID を指定して操作する
-  @Published var isOn: Bool = false
-
-  private var _state: MyToggleState {
-    get { var s = MyToggleState(); s.isOn = isOn; return s }
-    set { isOn = newValue.isOn }
-  }
-
-  var describedState: [String: JSONValue] { makeMyToggleDescribedState(_state) }
-
-  func perform(commandName: String, parameters: JSONValue) async throws -> [String: JSONValue] {
-    switch commandName {
-    case "getState":
-      return describedState
-    case "toggle":
-      var s = _state; applyMyToggle(to: &s); _state = s
-      return describedState
-    case "setProperty":
-      var s = _state; try applyMyToggleSetProperty(to: &s, parameters: parameters); _state = s
-      return describedState
-    default:
-      throw TestError.unknownCommand(commandName)
-    }
-  }
-}
+// MARK: - ② ブリッジは不要に
+//
+// 旧版の `@MainActor final class MyToggle: ObservableObject, AnyTestable { ... perform switch ... }`
+// は丸ごと削除できます。代わりに TestableComponent<MyToggleState> を 1 つ宣言するだけです。
 
 // MARK: - View
 
 struct MyToggleView: View {
-  @ObservedObject var toggle: MyToggle
+  // TestableComponent を直接 StateObject として保持する
+  @StateObject private var toggle = TestableComponent<MyToggleState>(
+    id: "example.my.toggle",
+    state: MyToggleState(),
+    // describe 省略 → properties から自動導出（isOn を describe）
+    properties: [
+      "isOn": .bool(\.isOn)
+    ],
+    commands: [
+      // toggle コマンド: ON/OFF 反転
+      "toggle": { state, _ in state.isOn.toggle() }
+    ]
+  )
 
   var body: some View {
     Toggle("My Toggle", isOn: Binding(
-      get: { toggle.isOn },
+      get: { toggle.state.isOn },
       set: { _ in Task { _ = try? await toggle.perform(commandName: "toggle", parameters: .null) } }
     ))
     .padding()
+    .testable(toggle)   // ★ View 表示時に registry へ自動登録
   }
 }
 
@@ -89,14 +54,12 @@ struct MyToggleView: View {
 
 @main
 struct MyExampleApp: App {
-  @StateObject private var toggle = MyToggle()
   @State private var registry = TestableRegistry()   // ★ アプリ起点で 1 つだけ生成
   @State private var server: TestableServer?
 
   var body: some Scene {
     WindowGroup {
-      MyToggleView(toggle: toggle)
-        .testable(toggle)                             // ★ View 表示時に registry へ自動登録
+      MyToggleView()
         .environment(\.testableRegistry, registry)    // ★ View ツリーへ同じ registry を注入
         .task {
           do {

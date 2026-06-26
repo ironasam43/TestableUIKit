@@ -11,6 +11,33 @@ iOS/macOS 向けの UIコンポーネント自己申告型テストフレーム�
 
 ---
 
+## 計装の 3 段階（API Tiers）
+
+抽象度の異なる 3 段階の API があります。**まず上から検討**し、合わなければ下に降りてください。
+
+| Tier | API | 向いている対象 | 必要な部品 |
+|---|---|---|---|
+| **Tier 2** | `TestableToggle` / `TestableTextField` / `TestableStepper` / `TestableSlider` / `TestableButton` | 標準 SwiftUI コントロール | View を差し替えるだけ |
+| **Tier 1** | `TestableComponent<State>` | 自作コンポーネント（state 値型を持つ） | state 値型 ＋ `properties` / `commands` の宣言（手書き `perform` 不要） |
+| **Tier 0** | `AnyTestable` 手書き準拠 | 特殊計装（ロック制御・cross-process 等） | `testID` / `describedState` / `perform` を自前実装 |
+
+```swift
+// Tier 2: 標準コントロールは View を差し替えるだけ
+TestableToggle("通知", isOn: $isOn, id: "settings.toggle")
+
+// Tier 1: 自作 state は TestableComponent を宣言するだけ（ブリッジ class 不要）
+TestableComponent<MyToggleState>(
+  id: "example.my.toggle",
+  state: MyToggleState(),
+  properties: ["isOn": .bool(\.isOn)],
+  commands: ["toggle": { s, _ in s.isOn.toggle() }]
+)
+```
+
+詳しい使い分けは [`docs/getting-started.md`](docs/getting-started.md) の「3 つの API 段階」を参照してください。
+
+---
+
 ## ドキュメント
 
 | ドキュメント | 内容 |
