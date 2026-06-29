@@ -9,4 +9,4 @@
 - [x] Step 7: ui_screenshot → base64 復号 PNG 保存・signature 89504e47✅・1800×1364px・46,280bytes
 - [x] Step 8: e2e 再現スクリプト（e2e_macdemo.sh）を成果物として追加・アプリ終了/8888解放
 - [x] Step 9: commit（feat:）→ history.md 追記 → handoff.md 更新 → blackboard.md を今タスクへ更新
-- [x] Step 10: 視覚不可分の残余のみ verify-queue.md へ起票
+- [x] Step 10: 視覚不可分の残余のみ verify-queue.md へ起票（2件・commit a8dd1ba）
