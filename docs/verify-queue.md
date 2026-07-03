@@ -23,5 +23,7 @@
     └ 詳細: HTTP POST /perform(increment) での 0→1 は e2e 断定済み。残るは GUI クリック → SwiftUI @State 更新の配線確認（HTTP 非経路・目視のみ）。
 - [ ] **MCP Swift 版 4ツール live パリティ** ｜操作: 実機（`TESTABLE_IPC_HOST=<実機IP> cd mcp-swift && swift run TestableUIKitMCP`）or Simulator（`swift run TestableUIKitMCP`）で起動した MCP サーバに ui_ping→ui_getState(`scene.demo.counter`)→ui_perform(increment)→ui_getState→ui_screenshot を順に呼ぶ ｜着眼: 各ツールの戻り値 ｜合格: ui_ping=`{"status":"ok"}`／getState=describedState dict／perform 後 count 0→1／screenshot=非空 PNG。Python 版と同一結果（パリティ成立）
     └ 詳細: protocol-level（stdio handshake・tools/list・tools/call の graceful fail）と Core 純関数 41 XCTest は機械検証済み。残るは起動中 DemoApp への実 HTTP 中継成功パス。合格後 Python 版 `mcp_server/` 廃止条件①を満たす。
+- [ ] **ui_runScenario 37e835d** ｜操作: 実機/Simulator で起動した DemoApp に対し `swift run TestableUIKitMCP` の `ui_runScenario` へ `Example/scenarios/counter-flow.json` を渡して実行 ｜着眼: 各ステップの pass/fail ｜合格: 5 ステップ全て `passed: true`（`passCount=5, failCount=0`）
+    └ 詳細: パース・assert 評価（`ScenarioEvaluator`）は L1 XCTest 20件で機械検証済み。DemoApp 未起動時の graceful fail（HTTP 接続失敗でもシナリオ中断せず5ステップ完走・fail 記録）は stdio 経由で実測確認済み。残るは起動中 DemoApp への実 HTTP 中継が pass する成功パスのみ。
 
 ## 機械検証済み・消し込み

@@ -1,12 +1,9 @@
-## macOS デモ e2e 実証（build→test→4ツール機械検証→commit/docs）
+## ui_runScenario 実装 + README 公開化
 - [x] 問題分析
-- [x] Step 1: swift build 通過（ログを絶対パスへ保存・DoDゲート①）
-- [x] Step 2: swift test 通過（117 PASS / 0 failures・iOS15/後方互換=既存green確認・ゲート②）
-- [x] Step 3: MacDemo を background 起動 → GET /ping を ok までポーリング（2秒以内応答）
-- [x] Step 4: getState(scene.demo.counter) を 200 までポーリング（登録完了ゲート）
-- [x] Step 5: ui_getState 確定値 count==0 をログ照合
-- [x] Step 6: ui_perform increment → 再 getState で count 0→1 確定値照合
-- [x] Step 7: ui_screenshot → base64 復号 PNG 保存・signature 89504e47✅・1800×1364px・46,280bytes
-- [x] Step 8: e2e 再現スクリプト（e2e_macdemo.sh）を成果物として追加・アプリ終了/8888解放
-- [x] Step 9: commit（feat:）→ history.md 追記 → handoff.md 更新 → blackboard.md を今タスクへ更新
-- [x] Step 10: 視覚不可分の残余のみ verify-queue.md へ起票（2件・commit a8dd1ba）
+- [x] Step 1: Core に Scenario モデル＋純粋 assert 評価関数を追加
+- [x] Step 2: Core の L1 テスト追加（パース・assert 評価・集約）
+- [x] Step 3: main.swift に uiRunScenario 実装＋5本目ツール登録
+- [x] Step 4: Example/scenarios/ にサンプル JSON 1〜2本
+- [x] Step 5: docs/ipc-protocol.md・design.md 追記＋mcp_server→mcp-swift ドリフト是正
+- [x] Step 6: swift build / swift test green・stdio handshake で5ツール確認
+- [x] Step 7: README 公開化（MCP 訴求＋絶対パス・内部文言除去）
