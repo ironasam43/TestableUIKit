@@ -1,0 +1,31 @@
+{
+  "name": "counter-flow",
+  "steps": [
+    {
+      "action": "getState",
+      "testID": "scene.demo.counter",
+      "expect": { "count": 0, "isEnabled": true }
+    },
+    {
+      "action": "increment",
+      "testID": "scene.demo.counter",
+      "expect": { "count": 1, "isEnabled": true }
+    },
+    {
+      "action": "increment",
+      "testID": "scene.demo.counter",
+      "expect": { "count": 2 }
+    },
+    {
+      "action": "setProperty",
+      "testID": "scene.demo.counter",
+      "parameters": { "key": "isEnabled", "value": false },
+      "expect": { "isEnabled": false }
+    },
+    {
+      "action": "increment",
+      "testID": "scene.demo.counter",
+      "expect": { "count": 2, "isEnabled": false }
+    }
+  ]
+}

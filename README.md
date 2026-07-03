@@ -1,13 +1,58 @@
-# TestableUIKit：垂直スライス実装
+# TestableUIKit
 
 iOS/macOS 向けの UIコンポーネント自己申告型テストフレームワーク。
 
-**差別化：** Swift型システムとAIが融合した、コンポーネント自己申告型テストフレームワーク
+**差別化：** Swift 型システムと AI（MCP: Model Context Protocol）が融合した、コンポーネント自己申告型テストフレームワーク。UI コンポーネントが `testID`・状態・実行可能コマンドを自己申告し、AI エージェントが MCP 経由で実行中の UI を直接操作・検証できる。
 
 > 🚀 **はじめての方へ**: 自作コンポーネントを 5 分で計装する手順は
 > [`docs/getting-started.md`](docs/getting-started.md) を参照してください。
 > 最小の動くサンプルは [`Example/`](Example/README.md)、困ったときは
 > [`docs/troubleshooting.md`](docs/troubleshooting.md) にまとまっています。
+
+---
+
+## AI エージェントによる自動操作（MCP）
+
+TestableUIKit は [MCP（Model Context Protocol）](https://modelcontextprotocol.io/) サーバー（[`mcp-swift/`](mcp-swift/)）を同梱しており、Claude などの AI エージェントが Claude Desktop / Claude Code から stdio 経由で接続し、実行中の UI を直接操作・検証できます。**探索的な AI 駆動**と**決定的な宣言的シナリオ**の二つのアプローチを両輪で提供します。
+
+### 1. AI 動的シナリオ（探索的）
+
+AI エージェントが `ui_getState` で現在の状態を取得 → 自ら判断 → `ui_perform` でコマンド実行 → `ui_screenshot` で見た目を確認、というサイクルを都度の判断で連鎖させながら UI を探索的に操作・検証します。仕様が固まっていない画面の探索や、想定外の挙動の調査に向いています。
+
+### 2. 宣言的シナリオ（`ui_runScenario`・決定的）
+
+操作列と期待値をあらかじめ JSON で定義しておき、1 回の MCP 呼び出しで先頭から順に実行し、各ステップの `describedState` を `expect` と突合して pass/fail を判定します。AI の都度判断を介さず決定的に実行できるため、回帰確認に向いています。
+
+```json
+{
+  "name": "counter-flow",
+  "steps": [
+    { "action": "getState", "testID": "scene.demo.counter", "expect": { "count": 0 } },
+    { "action": "increment", "testID": "scene.demo.counter", "expect": { "count": 1 } }
+  ]
+}
+```
+
+動作するサンプルは [`Example/scenarios/`](Example/scenarios/) を参照してください。
+
+### MCP ツール一覧（5 本）
+
+| ツール | ラップ先 | 用途 |
+|---|---|---|
+| `ui_ping` | `GET /ping` | サーバー死活確認 |
+| `ui_getState(testID)` | `POST /perform` getState | 状態取得 |
+| `ui_perform(testID, command, params)` | `POST /perform` | コマンド実行（tap / setProperty / setEnabled など） |
+| `ui_screenshot` | `GET /screenshot`（simctl フォールバック） | スクリーンショット取得 |
+| `ui_runScenario(scenario)` | `POST /perform` を複数ステップぶん順送り | 宣言的 JSON シナリオの実行・assert 判定 |
+
+### 起動方法
+
+```bash
+cd mcp-swift
+swift run TestableUIKitMCP
+```
+
+Claude Desktop / Claude Code などの MCP クライアント設定に stdio サーバーとして登録してください。プロトコル詳細は [`docs/ipc-protocol.md`](docs/ipc-protocol.md)・[`docs/design.md`](docs/design.md) §E を参照。
 
 ---
 
@@ -189,7 +234,7 @@ class LoginButton: UIButton, AnyTestable {
 
 1. **project.yml から xcodeproj を生成**：
    ```bash
-   cd /Users/koba-p/Documents/Dev/projects/TestableUIKit
+   cd TestableUIKit  # リポジトリのルート
    xcodegen generate
    ```
 
@@ -215,7 +260,7 @@ class LoginButton: UIButton, AnyTestable {
 
 ```bash
 # 別ターミナルで
-cd /Users/koba-p/Documents/Dev/projects/TestableUIKit
+cd TestableUIKit  # リポジトリのルート
 python3 run_test.py
 ```
 
@@ -316,10 +361,10 @@ TESTABLE_IPC_HOST=192.168.0.181 python3 run_test.py
 
 ## ライセンス
 
-このプロジェクトは内部開発向けです。
+ライセンスは現在検討中です（LICENSE ファイル追加時に確定します）。利用を検討される場合はリポジトリの Issue でお問い合わせください。
 
 ---
 
 ## サポート
 
-問題が発生した場合は、Auditor に報告してください。
+問題や質問がある場合は、[GitHub Issues](https://github.com/ironasam43/TestableUIKit/issues) で報告してください。

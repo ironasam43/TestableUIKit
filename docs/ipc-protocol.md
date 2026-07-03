@@ -94,6 +94,37 @@ key window を PNG レンダリングして base64 で返す。
 
 ---
 
+### 4. MCP `ui_runScenario`（宣言的シナリオ実行）
+
+**目的**: 複数ステップの UI 操作＋期待値検証を 1 回の MCP 呼び出しで宣言的に実行する。
+
+**実装場所**: `mcp-swift/`（MCP レイヤーのみ。**新規 HTTP エンドポイントは追加しない**）。
+各ステップは内部的に本ページの `POST /perform` へ順に変換されるだけで、IPC プロトコル自体に変更はない。
+
+**シナリオ形式**:
+```json
+{
+  "name": "counter-flow",
+  "steps": [
+    {
+      "action": "increment",
+      "testID": "scene.demo.counter",
+      "parameters": null,
+      "expect": { "count": 1, "isEnabled": true }
+    }
+  ]
+}
+```
+
+- `action` は `POST /perform` の `commandName` にそのまま渡される（getState / tap / setProperty / setEnabled / コンポーネント固有コマンド）。
+- `parameters` は省略可（省略時は `null`）。
+- `expect` は省略可。指定した場合、実行後の describedState と **キー単位**で突合し、一致しないキー・欠落キーは fail として記録する（number は微小誤差許容、それ以外は完全一致）。
+- ステップは先頭から順に実行し、途中で失敗（HTTP 異常・`{"error":...}` 応答）してもシナリオは中断せず次のステップへ進む。
+
+**戻り値**: 各ステップの pass/fail・assert 詳細・シナリオ全体の集計（`passCount`/`failCount`）を含む構造化 JSON。詳細は `docs/design.md` §E2 を参照。
+
+---
+
 ## testID Naming Convention
 
 `testID` は階層的に命名し、アプリの View 構造を反映させます。

@@ -8,11 +8,12 @@
 //  Claude が実行中の iOS UI を直接駆動・describedState を構造化検査できる。
 //  状態レス HTTP 中継のみで、TestableUIKit の Swift 型は import しない。
 //
-//  公開する MCP tool（4本・Python 版と同一）:
-//    ui_ping        — GET /ping            死活確認
-//    ui_getState    — POST /perform getState  状態取得
-//    ui_perform     — POST /perform          コマンド実行（tap/setProperty など）
-//    ui_screenshot  — GET /screenshot（一次）/ simctl（loopback フォールバック）
+//  公開する MCP tool（5本）:
+//    ui_ping         — GET /ping            死活確認
+//    ui_getState     — POST /perform getState  状態取得
+//    ui_perform      — POST /perform          コマンド実行（tap/setProperty など）
+//    ui_screenshot   — GET /screenshot（一次）/ simctl（loopback フォールバック）
+//    ui_runScenario  — 宣言的 JSON シナリオ（複数ステップ＋expect assert）を順に実行
 //
 //  前提:
 //    DemoApp が iOS 実機 / Simulator 上で起動済み（:8888 でリッスン中）。
@@ -180,6 +181,70 @@ func screenshotViaSimctl() throws -> (base64: String, mimeType: String) {
   return (png.base64EncodedString(), "image/png")
 }
 
+/// 宣言的 JSON シナリオ（Scenario）を先頭から順に実行し、各ステップの
+/// describedState を expect と突合、pass/fail を集約した ScenarioResult を
+/// JSON 文字列で返す。
+///
+/// ステップ実行が失敗（HTTP 異常・`{"error":...}` 応答・デコード失敗）しても
+/// シナリオ全体は中断せず、当該ステップを fail として記録し次のステップへ進む。
+func uiRunScenario(scenarioJSON: String) async throws -> String {
+  let scenario = try ScenarioParser.parse(jsonString: scenarioJSON)
+  var stepResults: [StepResult] = []
+
+  for (index, step) in scenario.steps.enumerated() {
+    let paramsJSON: String?
+    if let params = step.parameters, params != .null {
+      let data = try JSONEncoder().encode(params)
+      paramsJSON = String(data: data, encoding: .utf8)
+    } else {
+      paramsJSON = nil
+    }
+    let payload = IPCHelpers.buildPerformPayload(
+      testID: step.testID, commandName: step.action, parametersJSON: paramsJSON
+    )
+
+    stepResults.append(
+      await runScenarioStep(index: index, step: step, payload: payload)
+    )
+  }
+
+  let result = ScenarioEvaluator.buildScenarioResult(name: scenario.name, stepResults: stepResults)
+  let data = try JSONEncoder().encode(result)
+  return String(data: data, encoding: .utf8) ?? "{}"
+}
+
+/// 1 ステップぶんの /perform 送信・応答デコード・assert 評価をまとめて行う。
+func runScenarioStep(index: Int, step: ScenarioStep, payload: String) async -> StepResult {
+  func failure(_ message: String) -> StepResult {
+    StepResult(
+      index: index, action: step.action, testID: step.testID, success: false, error: message,
+      describedState: nil, asserts: [], passed: false
+    )
+  }
+
+  do {
+    let (code, data) = try await httpPOSTJSON("\(ipcBase)/perform", body: payload)
+    guard code == 200 else {
+      return failure("HTTP \(code): \(bodyString(data))")
+    }
+    let decoded = try JSONDecoder().decode(JSONValue.self, from: data)
+    guard let obj = decoded.objectValue else {
+      return failure("/perform 応答が object ではありません: \(bodyString(data))")
+    }
+    if case .string(let errMsg)? = obj["error"] {
+      return failure(errMsg)
+    }
+    let asserts = step.expect.map { ScenarioEvaluator.evaluateExpect(expected: $0, actual: obj) } ?? []
+    let passed = asserts.allSatisfy { $0.passed }
+    return StepResult(
+      index: index, action: step.action, testID: step.testID, success: true, error: nil,
+      describedState: obj, asserts: asserts, passed: passed
+    )
+  } catch {
+    return failure("\(error)")
+  }
+}
+
 // ================================================================
 // MCP サーバ構築（ツール登録・stdio transport）
 // ================================================================
@@ -238,6 +303,23 @@ await server.withMethodHandler(ListTools.self) { _ in
       description: "起動中の DemoApp（実機 / Simulator）のスクリーンショットを取得する（GET /screenshot 一次・simctl フォールバック）。",
       inputSchema: .object(["type": .string("object"), "properties": .object([:])])
     ),
+    Tool(
+      name: "ui_runScenario",
+      description:
+        "宣言的 JSON シナリオ（複数ステップの action/testID/parameters/expect 列）を先頭から順に実行し、"
+        + "各ステップの describedState を expect と突合した pass/fail 結果を構造化して返す。",
+      inputSchema: .object([
+        "type": .string("object"),
+        "properties": .object([
+          "scenario": .object([
+            "type": .string("object"),
+            "description": .string(
+              "{ name: string, steps: [{ action, testID, parameters?, expect? }] } 形式のシナリオ"),
+          ])
+        ]),
+        "required": .array([.string("scenario")]),
+      ])
+    ),
   ]
   return .init(tools: tools)
 }
@@ -271,6 +353,18 @@ await server.withMethodHandler(CallTool.self) { params in
     case "ui_screenshot":
       let (b64, mime) = try await uiScreenshot()
       return .init(content: [.image(data: b64, mimeType: mime, annotations: nil, _meta: nil)], isError: false)
+
+    case "ui_runScenario":
+      guard let scenarioValue = params.arguments?["scenario"] else {
+        return .init(content: [.text(text: "scenario は必須です", annotations: nil, _meta: nil)], isError: true)
+      }
+      guard let scenarioJSON = jsonString(from: scenarioValue) else {
+        return .init(
+          content: [.text(text: "scenario のシリアライズに失敗しました", annotations: nil, _meta: nil)],
+          isError: true)
+      }
+      let resultJSON = try await uiRunScenario(scenarioJSON: scenarioJSON)
+      return .init(content: [.text(text: resultJSON, annotations: nil, _meta: nil)], isError: false)
 
     default:
       return .init(content: [.text(text: "未知のツール: \(params.name)", annotations: nil, _meta: nil)], isError: true)

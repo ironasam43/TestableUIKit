@@ -106,3 +106,14 @@
 - **ライブラリ本体**: 不変（状態レス・iOS15/後方互換温存・既存手書き経路温存）。`swift test` **117 PASS / 0 failures**（前回から変化なし）。
 - **設計判断（AppKit screenshot 注入）**: `ScreenshotProvider = @MainActor @Sendable () async throws -> Data` closure をアプリ層（`MacDemoApp.swift`）から注入。ライブラリは UIKit/AppKit に非依存のまま。iOS 版 DemoApp と同一パターン（注入点の一本化）。
 - **VQ 起票**: screenshot の視覚的正しさ（5コンポーネントのレイアウト崩れ有無）のみ起票（signature＋寸法＋byte長＋実描画は機械確認済み）。GUI クリック→perform 配線の体感は別 VQ 行で起票。
+
+## 2026-07-04 ui_runScenario 実装（宣言的シナリオ）+ README 公開化
+- **概要**: MCP（Model Context Protocol）に宣言的シナリオ実行機能を追加し、既存の単発 RPC 型 4 ツールと並ぶ 5 本目の主軸 `ui_runScenario` とした。あわせて README.md を公開向けに書き換え。
+- **新規 `mcp-swift/Sources/TestableUIKitMCPCore/Scenario.swift`**: `Scenario`/`ScenarioStep`/`AssertResult`/`StepResult`/`ScenarioResult` の Codable モデルと純粋関数群（`ScenarioParser.parse`・`ScenarioEvaluator.evaluateExpect`・`ScenarioEvaluator.buildScenarioResult`）。`evaluateExpect` は describedState 5キー（isEnabled/title/isHidden/alpha/backgroundColor）を含む任意キーに対し bool/string 完全一致・number 微小誤差許容で判定。swift-sdk 非依存の Core 層に配置し L1 テスト対象化。
+- **新規 `mcp-swift/Tests/TestableUIKitMCPCoreTests/ScenarioTests.swift`**: パース6件・assert評価8件など L1 テスト追加。
+- **`mcp-swift/Sources/TestableUIKitMCP/main.swift`**: `uiRunScenario`/`runScenarioStep` を実装。新規 HTTP エンドポイントは追加せず、既存 `POST /perform` へステップを順送りし応答を assert 評価する薄いオーケストレーションのみ。`ui_runScenario` を ListTools/CallTool に5本目として登録。ステップ失敗（HTTP異常・`{"error":...}`応答）はシナリオを中断せず fail 記録して継続。
+- **新規 `Example/scenarios/counter-flow.json` / `login-flow.json`**: 動作するサンプルシナリオ2本（getState/increment/setProperty の組み合わせ・expect 突合）。
+- **`docs/design.md` §E2 / `docs/ipc-protocol.md`**: `ui_runScenario` の仕様・ツール一覧表（5本）を追記。**[WARN] 是正**: §E2 が実装移植元 `mcp_server/`（Python・4ツール）の記述のまま実体 `mcp-swift/`（Swift）へ未追随だったドリフトを、実体追随の注記追加で解消。
+- **README.md 公開化**: タイトルを「垂直スライス実装」から中立化。冒頭に「AI エージェントによる自動操作（MCP）」節を新設し、①AI 動的シナリオ（getState→判断→perform→screenshot の探索的連鎖）②`ui_runScenario` 宣言的シナリオ、の両輪＋ツール一覧＋起動方法を訴求。絶対パス（`/Users/koba-p/...`）2箇所を相対表記へ、内部運用文言（「内部開発向け」「Auditor に報告」）を公開向け表現（ライセンス検討中の明記／GitHub Issues 誘導）へ書き換え。
+- **検証**: `swift build` 成功／`swift test` **61 PASS（0 failure）**／stdio handshake で `initialize`→`tools/list` を実行し5ツール（ui_ping/ui_getState/ui_perform/ui_screenshot/ui_runScenario）の登録を実測確認。
+- **残**: `ui_runScenario` を実起動中 DemoApp/MacDemo に対して実際に流すライブ e2e は実アプリ稼働が前提のため VQ へ送る（既存の Swift 版 MCP live パリティ VQ と同性質）。制御構文（分岐・リトライ・待機）は現スコープ外（線形ステップ列のみ）。

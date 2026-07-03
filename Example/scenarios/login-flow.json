@@ -1,0 +1,32 @@
+{
+  "name": "login-flow",
+  "steps": [
+    {
+      "action": "getState",
+      "testID": "scene.auth.loginButton",
+      "expect": {
+        "isEnabled": true,
+        "title": "Log In",
+        "isHidden": false,
+        "alpha": 1,
+        "backgroundColor": "systemBlue"
+      }
+    },
+    {
+      "action": "tap",
+      "testID": "scene.auth.loginButton",
+      "expect": { "isEnabled": false, "title": "Logged In" }
+    },
+    {
+      "action": "tap",
+      "testID": "scene.auth.loginButton",
+      "expect": { "isEnabled": false, "title": "Logged In" }
+    },
+    {
+      "action": "setProperty",
+      "testID": "scene.auth.loginButton",
+      "parameters": { "key": "isEnabled", "value": true },
+      "expect": { "isEnabled": true, "title": "Logged In" }
+    }
+  ]
+}

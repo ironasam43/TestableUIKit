@@ -434,7 +434,9 @@ python3 mcp_server/testableui_mcp.py
 
 ### E2: MCP サーバ Swift 化（SPM 公開・2026-06-24）
 
-**概要**: §E の Python 製 MCP サーバ（`mcp_server/`）を Swift（MCP swift-sdk）へ書き直し、SwiftPM で配布可能にした。`.venv`/Python 依存なしで `swift run` 一発で起動できる。公開 4 ツール・HTTP 契約・状態レス設計は Python 版と完全に同一（パリティ維持）。
+**概要**: §E の Python 製 MCP サーバ（`mcp_server/`）を Swift（MCP swift-sdk）へ書き直し、SwiftPM で配布可能にした。`.venv`/Python 依存なしで `swift run` 一発で起動できる。単発コマンド系の 4 ツール・HTTP 契約・状態レス設計は Python 版と完全に同一（パリティ維持）。
+
+> **[実体追随・2026-07-04]** 本節が正（実装は `mcp-swift/`・Swift）。Python 版 `mcp_server/` は §E に記述したまま凍結された歴史的記録であり、廃止条件（下記）を満たすまでの併走用に残す。以後 MCP サーバの仕様変更は本節（および `docs/ipc-protocol.md`）を正本として更新する。
 
 **実装場所**: `mcp-swift/`（**独立 sub-package**。メイン `Package.swift` とは別パッケージ）
 
@@ -461,13 +463,29 @@ mcp-swift/
   Package.swift                              # tools 6.0 / macOS13 / swift-sdk 依存
   Sources/
     TestableUIKitMCPCore/   IPCHelpers.swift # 純関数（外部依存ゼロ・XCTest 対象）
+                            Scenario.swift   # 宣言的シナリオモデル・パース・assert 評価（純関数）
     TestableUIKitMCP/       main.swift       # executable（swift-sdk 依存はここのみ）
   Tests/
-    TestableUIKitMCPCoreTests/IPCHelpersTests.swift  # L1 XCTest 41 ケース
+    TestableUIKitMCPCoreTests/IPCHelpersTests.swift  # L1 XCTest
+                              ScenarioTests.swift     # L1 XCTest（シナリオ）
 ```
 
-- `TestableUIKitMCPCore`: host/port 解決・URL 構築・perform payload 組み立て・simctl コマンド生成・loopback 判定。swift-sdk 非依存で機械検証する（Python `ipc_helpers.py` と 1:1）。
-- `TestableUIKitMCP`: MCP `Server` に 4 ツールを手動登録し `StdioTransport` で起動。HTTP 中継は `URLSession`。`ui_screenshot` は `GET /screenshot` 一次・loopback のみ simctl フォールバック（Python 版と同一経路）。
+- `TestableUIKitMCPCore`: host/port 解決・URL 構築・perform payload 組み立て・simctl コマンド生成・loopback 判定・**宣言的シナリオのパース/assert 評価/集約**。swift-sdk 非依存で機械検証する（`IPCHelpers` は Python `ipc_helpers.py` と 1:1、`Scenario`/`ScenarioEvaluator` は新規 Swift 版のみの機能）。
+- `TestableUIKitMCP`: MCP `Server` にツールを手動登録し `StdioTransport` で起動。HTTP 中継は `URLSession`。`ui_screenshot` は `GET /screenshot` 一次・loopback のみ simctl フォールバック（Python 版と同一経路）。`ui_runScenario` はシナリオの各ステップを `IPCHelpers.buildPerformPayload` 経由で `POST /perform` へ順送りし、応答を `ScenarioEvaluator.evaluateExpect` で判定する薄いオーケストレーション。
+
+#### 公開する MCP tool（5本）
+
+| MCP tool | ラップ先 | 返り値 | 用途 |
+|---|---|---|---|
+| `ui_ping` | `GET /ping` | `{status: "ok"}` | サーバー死活確認 |
+| `ui_getState(testID)` | `POST /perform` getState | describedState 不透明 dict | 状態取得 → AI が期待値照合 |
+| `ui_perform(testID, command, params)` | `POST /perform` | describedState 不透明 dict | tap/setProperty/setEnabled 実行 |
+| `ui_screenshot` | `GET /screenshot`（一次）→ simctl フォールバック | `{image_base64, format}` | 崩れ一次判定（Simulator/実機両対応） |
+| `ui_runScenario(scenario)` | `POST /perform` を複数ステップぶん順送り | `ScenarioResult`（各ステップの pass/fail・assert 詳細・集計） | 宣言的な複数ステップ UI シナリオを 1 呼び出しで実行 |
+
+**両輪の使い分け**:
+- **AI 動的シナリオ**（`ui_getState`→判断→`ui_perform`→`ui_screenshot`）: AI が都度 describedState を見て次の一手を判断する探索的な駆動。
+- **`ui_runScenario` 宣言的シナリオ**: 期待される操作列・期待値があらかじめ分かっている回帰確認を JSON 1 本で定義し、AI の都度判断を介さず決定的に実行・判定する。Example は `Example/scenarios/*.json` を参照。
 
 #### 起動方法
 
