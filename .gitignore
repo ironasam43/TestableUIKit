@@ -53,3 +53,15 @@ docs/cmflow.md
 # セッション添付（コミット対象外）
 .agent_attachments/
 .venv/
+
+# Internal working files (not intended for public OSS consumers)
+CLAUDE.md
+handoff.md
+docs/blackboard.md
+docs/history.md
+docs/verify-queue.md
+docs/verify-queue-done.md
+docs/verify-queue.template.md
+docs/scenario-authoring-plan.md
+docs/oss-publication-roadmap.md
+archive/
