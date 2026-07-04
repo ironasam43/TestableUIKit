@@ -1,8 +1,8 @@
 import Foundation
 
-// MARK: - 共有状態 struct
+// MARK: - Shared State Struct
 
-/// LoginButton の状態を保持する純粋な値型（CLI・SwiftUI 共用）
+/// Pure value type holding LoginButton state (shared by CLI and SwiftUI)
 public struct LoginButtonState {
   public var isEnabled: Bool = true
   public var title: String = "Log In"
@@ -13,9 +13,9 @@ public struct LoginButtonState {
   public init() {}
 }
 
-// MARK: - 純粋コマンド処理関数
+// MARK: - Pure Command Processing Functions
 
-/// 5キー describedState を生成する純粋関数
+/// Pure function that produces a 5-key describedState
 public func makeLoginButtonDescribedState(_ state: LoginButtonState) -> [String: JSONValue] {
   [
     "isEnabled": .bool(state.isEnabled),
@@ -26,16 +26,16 @@ public func makeLoginButtonDescribedState(_ state: LoginButtonState) -> [String:
   ]
 }
 
-/// tap コマンド処理
-/// - 意味論: 実ユーザー同様に disabled は弾く（no-op）。有効時はログイン遷移を模倣。
-/// - 副作用: guard isEnabled / isEnabled = false（二重送信防止）/ title = "Logged In"
+/// Handles the tap command
+/// - Semantics: rejects tap when disabled (no-op), mirroring real-user behavior; simulates a login transition when enabled
+/// - Side effects: guard isEnabled / isEnabled = false (prevent double-submit) / title = "Logged In"
 public func applyTap(to state: inout LoginButtonState) {
-  guard state.isEnabled else { return }  // 無効なら no-op（実ユーザー同様に弾く）
-  state.isEnabled = false                 // 二重送信防止
-  state.title = "Logged In"              // 可視なログイン結果（@Published 再描画の証拠）
+  guard state.isEnabled else { return }  // no-op when disabled (mirrors real-user behavior)
+  state.isEnabled = false                 // prevent double-submit
+  state.title = "Logged In"              // visible login result (proof of @Published re-render)
 }
 
-/// setProperty コマンド処理（parameters: {"key": string, "value": <value>}）
+/// Handles the setProperty command (parameters: {"key": string, "value": <value>})
 public func applySetProperty(
   to state: inout LoginButtonState,
   parameters: JSONValue
@@ -70,7 +70,7 @@ public func applySetProperty(
   }
 }
 
-/// setEnabled コマンド処理（parameters: JSONValue.bool）
+/// Handles the setEnabled command (parameters: JSONValue.bool)
 public func applySetEnabled(
   to state: inout LoginButtonState,
   parameters: JSONValue

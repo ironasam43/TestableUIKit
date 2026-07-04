@@ -294,7 +294,7 @@ final class CLIDemoLoginButtonTests: XCTestCase {
   }
 
   func testTap_changesTitle_toLoggedIn() async throws {
-    // 定義A実証: tap で title が "Log In" → "Logged In" に変化すること（@Published 再描画の証拠）
+    // Proof of Definition A: tap changes title from "Log In" → "Logged In" (proof of @Published re-render)
     XCTAssertEqual(button.title, "Log In")
 
     let result = try await button.perform(commandName: "tap", parameters: .null)
@@ -305,16 +305,16 @@ final class CLIDemoLoginButtonTests: XCTestCase {
   }
 
   func testTap_whenDisabled_isNoOp() async throws {
-    // 決定1（IPC tap 意味論）: 無効状態での tap は no-op（実ユーザー同様に弾く）
+    // Decision 1 (IPC tap semantics): tap when disabled is a no-op (rejected like a real user tap)
     _ = try await button.perform(commandName: "setEnabled", parameters: .bool(false))
     XCTAssertFalse(button.isEnabled)
-    XCTAssertEqual(button.title, "Log In")  // title はまだ変化していない
+    XCTAssertEqual(button.title, "Log In")  // title has not changed yet
 
-    // tap を叩いても状態不変
+    // state must not change after tap
     let result = try await button.perform(commandName: "tap", parameters: .null)
 
-    XCTAssertFalse(button.isEnabled)         // isEnabled は変わらない
-    XCTAssertEqual(button.title, "Log In")   // title も変わらない
+    XCTAssertFalse(button.isEnabled)         // isEnabled must not change
+    XCTAssertEqual(button.title, "Log In")   // title must not change
     XCTAssertEqual(result["isEnabled"], .bool(false))
     XCTAssertEqual(result["title"], .string("Log In"))
   }
@@ -333,16 +333,16 @@ final class CLIDemoLoginButtonTests: XCTestCase {
   }
 
   func testGetState_afterTap_reflectsChange() async throws {
-    // tap でアクション実行後、getState が最新状態を返すこと
+    // After tap action, getState should return the latest state
     _ = try await button.perform(commandName: "tap", parameters: .null)
     let result = try await button.perform(commandName: "getState", parameters: .null)
 
     XCTAssertEqual(result["isEnabled"], .bool(false))
-    XCTAssertEqual(result["title"], .string("Logged In"))  // 新意味論: tap で "Logged In" に変化
+    XCTAssertEqual(result["title"], .string("Logged In"))  // new semantics: tap changes to "Logged In"
   }
 
   func testGetState_hasAllFiveKeys() async throws {
-    // describedState が5キー揃っていること
+    // describedState must have all five keys
     let result = try await button.perform(commandName: "getState", parameters: .null)
 
     XCTAssertNotNil(result["isEnabled"])
@@ -356,7 +356,7 @@ final class CLIDemoLoginButtonTests: XCTestCase {
   // MARK: - setEnabled command
 
   func testSetEnabled_false() async throws {
-    // 初期 isEnabled = true → setEnabled(false) → false になること
+    // initial isEnabled = true → setEnabled(false) → must become false
     XCTAssertTrue(button.isEnabled)
 
     let result = try await button.perform(commandName: "setEnabled", parameters: .bool(false))
@@ -366,7 +366,7 @@ final class CLIDemoLoginButtonTests: XCTestCase {
   }
 
   func testSetEnabled_restoreAfterTap() async throws {
-    // tap で false になった後、setEnabled(true) で true に復帰すること
+    // after tap sets it to false, setEnabled(true) must restore it to true
     _ = try await button.perform(commandName: "tap", parameters: .null)
     XCTAssertFalse(button.isEnabled)
 
@@ -377,7 +377,7 @@ final class CLIDemoLoginButtonTests: XCTestCase {
   }
 
   func testSetEnabled_invalidParameters_throwsError() async throws {
-    // bool 以外のパラメータは invalidParameters エラーになること
+    // non-bool parameters must produce an invalidParameters error
     do {
       _ = try await button.perform(commandName: "setEnabled", parameters: .string("true"))
       XCTFail("Expected TestError.invalidParameters to be thrown")
@@ -386,7 +386,7 @@ final class CLIDemoLoginButtonTests: XCTestCase {
     }
   }
 
-  // MARK: - describedState 5キー parity
+  // MARK: - describedState 5-key parity
 
   func testDescribedState_hasFiveKeys() {
     let state = button.describedState

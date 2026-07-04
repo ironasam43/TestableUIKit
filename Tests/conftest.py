@@ -1,12 +1,12 @@
 """
 pytest fixtures for TestableUIKit IPC integration tests.
 
-前提: DemoApp が iOS Simulator 上で起動済みで、
-      TestableServer がリッスンしている。
+Prerequisite: DemoApp must be running on iOS Simulator with
+              TestableServer listening.
 
-接続先の上書き（Design D: LAN 越し IPC）:
-  TESTABLE_IPC_HOST 環境変数で接続先ホストを変更可（既定: localhost）
-  TESTABLE_IPC_PORT 環境変数で接続先ポートを変更可（既定: 8888）
+Override connection target (Design D: LAN IPC):
+  TESTABLE_IPC_HOST env var to change target host (default: localhost)
+  TESTABLE_IPC_PORT env var to change target port (default: 8888)
 """
 
 import os
@@ -15,17 +15,17 @@ import sys
 import pytest
 import requests
 
-# mcp_server/ を import パスに追加（resolve_ipc_host_port 使用）
+# Add mcp_server/ to import path (for resolve_ipc_host_port)
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "mcp_server"))
 from ipc_helpers import resolve_ipc_host_port
 
-# ========== 定数 ==========
+# ========== Constants ==========
 
 _ipc_host, _ipc_port = resolve_ipc_host_port()
 BASE_URL = f"http://{_ipc_host}:{_ipc_port}"
 TEST_ID = "scene.auth.loginButton"
 
-# LoginButton の初期状態（5キー固定）
+# LoginButton initial state (5 fixed keys)
 INITIAL_STATE = {
     "isEnabled": True,
     "title": "Log In",
@@ -39,22 +39,22 @@ INITIAL_STATE = {
 
 @pytest.fixture(scope="session")
 def base_url():
-    """IPC サーバーのベース URL（セッション全体で共有）"""
+    """Base URL of the IPC server (shared for the entire session)."""
     return BASE_URL
 
 
 @pytest.fixture(scope="session")
 def test_id():
-    """テスト対象コンポーネントの testID（セッション全体で共有）"""
+    """testID of the component under test (shared for the entire session)."""
     return TEST_ID
 
 
 @pytest.fixture
 def perform(base_url, test_id):
     """
-    POST /perform のヘルパー関数を返す fixture。
+    Returns a helper fixture function for POST /perform.
 
-    使い方:
+    Usage:
         state = perform("tap")
         state = perform("setProperty", {"key": "isEnabled", "value": True})
     """
@@ -79,13 +79,13 @@ def perform(base_url, test_id):
 @pytest.fixture(autouse=True)
 def reset_state(perform):
     """
-    各テストの前に LoginButton を初期状態にリセットする（autouse）。
+    Resets LoginButton to initial state before each test (autouse).
 
-    初期状態:
+    Initial state:
       isEnabled: true, title: "Log In", isHidden: false,
       alpha: 1.0, backgroundColor: "systemBlue"
     """
-    # isEnabled と title を初期値に戻す（tap で変化する2キーのみリセット）
+    # Reset only the two keys that change on tap (isEnabled and title)
     perform("setProperty", {"key": "isEnabled", "value": True})
     perform("setProperty", {"key": "title", "value": "Log In"})
     yield

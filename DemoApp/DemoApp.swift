@@ -17,22 +17,22 @@ struct RootView: View {
   @StateObject private var textInput = TextInput()
   @StateObject private var onOffSwitch = OnOffSwitch()
   @StateObject private var rangeSlider = RangeSlider()
-  // Registry インスタンスをアプリ起点で1つ生成し、サーバと View ツリーへ注入する
+  // Create a single Registry instance at app entry and inject it into the server and View tree
   @State private var registry = TestableRegistry()
   @State private var server: TestableServer?
   @State private var serverRunning = false
 
   var body: some View {
     ContentView(loginButton: loginButton, counter: counter, textInput: textInput, onOffSwitch: onOffSwitch, rangeSlider: rangeSlider, serverRunning: $serverRunning)
-      // 同一 registry を View ツリー全体へ注入（CounterView の .testable() が利用）
+      // Inject the same registry into the entire View tree (used by CounterView's .testable())
       .environment(\.testableRegistry, registry)
       .task {
         do {
-          // Server にも同じ registry を注入してシングルトンを廃止
-          // DEBUG ビルドは LAN 公開（0.0.0.0）＋ スクリーンショット provider 注入
-          // Release は loopback（127.0.0.1）・provider なし
+          // Inject the same registry into the Server to eliminate singletons
+          // DEBUG build: LAN-exposed (0.0.0.0) + screenshot provider injected
+          // Release build: loopback (127.0.0.1), no provider
           #if DEBUG
-          // key window を PNG キャプチャする closure（UIKit 依存を app 側に閉じる）
+          // Closure to capture the key window as PNG (UIKit dependency confined to app layer)
           let screenshotProvider: TestableServer.ScreenshotProvider = { @MainActor in
             guard let windowScene = UIApplication.shared.connectedScenes
               .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
@@ -40,7 +40,7 @@ struct RootView: View {
                         ?? windowScene.windows.first else {
               throw NSError(
                 domain: "TestableUIKit.Screenshot", code: -1,
-                userInfo: [NSLocalizedDescriptionKey: "key window が取得できません"]
+                userInfo: [NSLocalizedDescriptionKey: "Failed to obtain key window"]
               )
             }
             let renderer = UIGraphicsImageRenderer(bounds: window.bounds)
@@ -50,7 +50,7 @@ struct RootView: View {
             guard let data = image.pngData() else {
               throw NSError(
                 domain: "TestableUIKit.Screenshot", code: -2,
-                userInfo: [NSLocalizedDescriptionKey: "PNG 変換に失敗しました"]
+                userInfo: [NSLocalizedDescriptionKey: "Failed to convert to PNG"]
               )
             }
             return data
@@ -60,7 +60,7 @@ struct RootView: View {
           #else
           let s = try TestableServer(port: 8888, registry: registry)
           #endif
-          // loginButton と counter は各ビューに付与した .testable() で自動登録
+          // loginButton and counter are auto-registered via .testable() attached to each view
           s.start()
           server = s
           serverRunning = true
@@ -96,7 +96,7 @@ struct ContentView: View {
       .background(Color(.systemGray6))
       .cornerRadius(8)
 
-      // LoginButton コンポーネント
+      // LoginButton component
       VStack(spacing: 12) {
         Button(action: {
           Task { @MainActor in
@@ -118,14 +118,14 @@ struct ContentView: View {
       }
       .testable(loginButton)
 
-      // Counter コンポーネント（.testable で自動登録）
+      // Counter component (auto-registered via .testable)
       CounterView(counter: counter)
         .testable(counter)
 
       Divider()
         .padding()
 
-      // TextInput コンポーネント（.testable で自動登録）
+      // TextInput component (auto-registered via .testable)
       VStack(spacing: 8) {
         Text("TextInput")
           .font(.headline)
@@ -133,7 +133,7 @@ struct ContentView: View {
       }
       .testable(textInput)
 
-      // OnOffSwitch コンポーネント（.testable で自動登録）
+      // OnOffSwitch component (auto-registered via .testable)
       VStack(spacing: 8) {
         Text("OnOffSwitch")
           .font(.headline)
@@ -141,7 +141,7 @@ struct ContentView: View {
       }
       .testable(onOffSwitch)
 
-      // RangeSlider コンポーネント（.testable で自動登録）
+      // RangeSlider component (auto-registered via .testable)
       VStack(spacing: 8) {
         Text("RangeSlider")
           .font(.headline)

@@ -12,7 +12,7 @@ struct MacDemoApp: App {
   @StateObject private var textInput = MacTextInput()
   @StateObject private var onOffSwitch = MacOnOffSwitch()
   @StateObject private var rangeSlider = MacRangeSlider()
-  // Registry インスタンスをアプリ起点で1つ生成し、サーバと View ツリーへ注入する
+  // Create one Registry instance at the app entry point and inject it into the server and View tree.
   @State private var registry = TestableRegistry()
   @State private var server: TestableServer?
   @State private var serverRunning = false
@@ -27,32 +27,32 @@ struct MacDemoApp: App {
         rangeSlider: rangeSlider,
         serverRunning: $serverRunning
       )
-      // 同一 registry を View ツリー全体へ注入（各コンポーネントの .testable() が利用）
+      // Inject the same registry into the entire View tree (used by each component's .testable()).
       .environment(\.testableRegistry, registry)
       .task {
         do {
-          // AppKit key window を PNG キャプチャする closure（AppKit 依存を app 側に閉じる）
-          // iOS DemoApp の UIGraphicsImageRenderer に対応する macOS 実装
+          // Closure that captures a PNG screenshot of the AppKit key window (AppKit dependency
+          // is confined to the app side). Corresponds to UIGraphicsImageRenderer on iOS.
           let screenshotProvider: TestableServer.ScreenshotProvider = { @MainActor in
             guard let window = NSApp.keyWindow ?? NSApp.windows.first,
                   let contentView = window.contentView else {
               throw NSError(
                 domain: "TestableUIKit.Screenshot", code: -1,
-                userInfo: [NSLocalizedDescriptionKey: "key window が取得できません"]
+                userInfo: [NSLocalizedDescriptionKey: "Could not obtain key window"]
               )
             }
             let bounds = contentView.bounds
             guard let rep = contentView.bitmapImageRepForCachingDisplay(in: bounds) else {
               throw NSError(
                 domain: "TestableUIKit.Screenshot", code: -2,
-                userInfo: [NSLocalizedDescriptionKey: "BitmapImageRep 生成に失敗しました"]
+                userInfo: [NSLocalizedDescriptionKey: "Failed to create BitmapImageRep"]
               )
             }
             contentView.cacheDisplay(in: bounds, to: rep)
             guard let data = rep.representation(using: .png, properties: [:]) else {
               throw NSError(
                 domain: "TestableUIKit.Screenshot", code: -3,
-                userInfo: [NSLocalizedDescriptionKey: "PNG 変換に失敗しました"]
+                userInfo: [NSLocalizedDescriptionKey: "Failed to convert to PNG"]
               )
             }
             return data
@@ -95,7 +95,7 @@ struct MacContentView: View {
           .font(.title)
           .fontWeight(.bold)
 
-        // サーバ状態インジケータ
+        // Server status indicator
         HStack {
           Circle()
             .fill(serverRunning ? Color.green : Color.red)
@@ -106,7 +106,7 @@ struct MacContentView: View {
         .background(Color.secondary.opacity(0.1))
         .cornerRadius(8)
 
-        // LoginButton コンポーネント
+        // LoginButton component
         VStack(spacing: 12) {
           Button(action: {
             Task { @MainActor in
@@ -129,14 +129,14 @@ struct MacContentView: View {
         }
         .testable(loginButton)
 
-        // Counter コンポーネント（.testable で自動登録）
+        // Counter component (auto-registered via .testable)
         MacCounterView(counter: counter)
           .testable(counter)
 
         Divider()
           .padding()
 
-        // TextInput コンポーネント（.testable で自動登録）
+        // TextInput component (auto-registered via .testable)
         VStack(spacing: 8) {
           Text("TextInput")
             .font(.headline)
@@ -144,7 +144,7 @@ struct MacContentView: View {
         }
         .testable(textInput)
 
-        // OnOffSwitch コンポーネント（.testable で自動登録）
+        // OnOffSwitch component (auto-registered via .testable)
         VStack(spacing: 8) {
           Text("OnOffSwitch")
             .font(.headline)
@@ -152,7 +152,7 @@ struct MacContentView: View {
         }
         .testable(onOffSwitch)
 
-        // RangeSlider コンポーネント（.testable で自動登録）
+        // RangeSlider component (auto-registered via .testable)
         VStack(spacing: 8) {
           Text("RangeSlider")
             .font(.headline)
@@ -160,7 +160,7 @@ struct MacContentView: View {
         }
         .testable(rangeSlider)
 
-        Text("e2e 検証:\ncurl http://localhost:8888/ping")
+        Text("e2e verification:\ncurl http://localhost:8888/ping")
           .font(.caption)
           .foregroundColor(.secondary)
           .multilineTextAlignment(.center)

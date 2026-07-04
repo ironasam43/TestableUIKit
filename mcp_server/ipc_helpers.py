@@ -1,8 +1,8 @@
 """
-TestableUIKit MCP Server — 純粋ヘルパー関数
+TestableUIKit MCP Server — Pure helper functions.
 
-HTTP IPC の payload 構築・レスポンス passthrough・simctl コマンド組み立て。
-外部依存なし。Simulator/DemoApp 不要で単体テスト可能。
+HTTP IPC payload construction, response passthrough, and simctl command assembly.
+No external dependencies. Testable standalone without Simulator/DemoApp.
 """
 
 import os
@@ -10,26 +10,26 @@ import os
 DEFAULT_IPC_HOST = "localhost"
 DEFAULT_IPC_PORT = 8888
 
-# 環境変数名定数（Design D: LAN 越し IPC 接続先の上書き用）
+# Env var name constants (Design D: override IPC target for LAN connections)
 ENV_IPC_HOST = "TESTABLE_IPC_HOST"
 ENV_IPC_PORT = "TESTABLE_IPC_PORT"
 
 
 def resolve_ipc_host_port(env: dict = None) -> tuple:
-    """環境変数から IPC 接続先の host・port を解決する。
+    """Resolve the IPC host and port from environment variables.
 
-    環境変数が未設定の場合は既定値（localhost:8888）を返す。
-    引数 env に dict を渡すと os.environ の代わりに使用する（テスト用）。
+    Returns the default values (localhost:8888) when no env vars are set.
+    Pass a dict as `env` to use it instead of os.environ (for testing).
 
     Args:
-        env: 参照する環境変数 dict（省略時は os.environ）
+        env: Environment variable dict to use (defaults to os.environ)
 
     Returns:
-        (host: str, port: int) のタプル
+        (host: str, port: int) tuple
 
-    環境変数:
-        TESTABLE_IPC_HOST: 接続先ホスト（既定: "localhost"）
-        TESTABLE_IPC_PORT: 接続先ポート番号文字列（既定: 8888）
+    Environment variables:
+        TESTABLE_IPC_HOST: Target host (default: "localhost")
+        TESTABLE_IPC_PORT: Target port as string (default: 8888)
     """
     if env is None:
         env = os.environ
@@ -43,17 +43,17 @@ def resolve_ipc_host_port(env: dict = None) -> tuple:
 
 
 def build_base_url(host: str = DEFAULT_IPC_HOST, port: int = DEFAULT_IPC_PORT) -> str:
-    """IPC サーバーのベース URL を組み立てる。"""
+    """Build the base URL for the IPC server."""
     return f"http://{host}:{port}"
 
 
 def build_perform_payload(test_id: str, command_name: str, parameters=None) -> dict:
-    """POST /perform の request body を構築する。
+    """Build the POST /perform request body.
 
     Args:
-        test_id: コンポーネントの testID（例: "scene.auth.loginButton"）
-        command_name: コマンド名（"getState" / "tap" / "setProperty" など）
-        parameters: コマンドパラメータ dict（省略可）
+        test_id: Component testID (e.g. "scene.auth.loginButton")
+        command_name: Command name ("getState" / "tap" / "setProperty", etc.)
+        parameters: Command parameters dict (optional)
 
     Returns:
         {"testID": ..., "commandName": ..., "parameters": ...}
@@ -66,50 +66,50 @@ def build_perform_payload(test_id: str, command_name: str, parameters=None) -> d
 
 
 def passthrough_state(response_data: dict) -> dict:
-    """describedState を不透明 dict として passthrough する。
+    """Pass through describedState as an opaque dict.
 
-    キー固定を前提にしない（STEP2 前方互換）。
-    schema 変化に強い薄いラッパーとして中身を加工しない。
+    Does not assume a fixed set of keys (STEP2 forward compatible).
+    A thin wrapper that does not modify contents for schema-change resilience.
     """
     return response_data
 
 
 def build_simctl_screenshot_command(output_path: str) -> list:
-    """simctl io booted screenshot コマンドを組み立てる。
+    """Assemble the simctl io booted screenshot command.
 
     Args:
-        output_path: スクリーンショットの保存先ファイルパス
+        output_path: Destination file path for the screenshot
 
     Returns:
-        subprocess.run に渡せるコマンドリスト
+        Command list ready to pass to subprocess.run
     """
     return ["xcrun", "simctl", "io", "booted", "screenshot", output_path]
 
 
 def build_screenshot_url(host: str = DEFAULT_IPC_HOST, port: int = DEFAULT_IPC_PORT) -> str:
-    """GET /screenshot エンドポイントの URL を組み立てる。
+    """Build the URL for the GET /screenshot endpoint.
 
     Args:
-        host: 接続先ホスト（既定: "localhost"）
-        port: 接続先ポート（既定: 8888）
+        host: Target host (default: "localhost")
+        port: Target port (default: 8888)
 
     Returns:
-        "http://<host>:<port>/screenshot" 形式の URL 文字列
+        URL string in "http://<host>:<port>/screenshot" format
     """
     return f"{build_base_url(host=host, port=port)}/screenshot"
 
 
 def is_loopback_host(host: str) -> bool:
-    """host がループバックアドレスかどうかを判定する（純粋関数）。
+    """Determine whether the host is a loopback address (pure function).
 
-    simctl フォールバック判定に使用する。
-    loopback かつ /screenshot 不達の場合のみ simctl へフォールバックする。
+    Used for the simctl fallback decision:
+    Falls back to simctl only when the target is loopback and /screenshot is unreachable.
 
     Args:
-        host: IPC 接続先ホスト文字列
+        host: IPC target host string
 
     Returns:
-        True  = loopback（"localhost" / "127.0.0.1" / "::1"）
-        False = LAN IP など非 loopback（実機接続など）
+        True  = loopback ("localhost" / "127.0.0.1" / "::1")
+        False = non-loopback such as LAN IP (real device connection, etc.)
     """
     return host in ("localhost", "127.0.0.1", "::1")

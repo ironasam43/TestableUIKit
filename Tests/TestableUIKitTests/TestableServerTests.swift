@@ -1,7 +1,7 @@
 import XCTest
 @testable import TestableUIKit
 
-// MARK: - TestableServer bind ホスト・ポート指定テスト (Design D 下地)
+// MARK: - TestableServer bind host/port tests (Design D groundwork)
 
 @available(iOS 15.0, macOS 12.0, *)
 final class TestableServerTests: XCTestCase {
@@ -14,100 +14,100 @@ final class TestableServerTests: XCTestCase {
   }
 
   // ----------------------------------------------------------------
-  // 既定値の後方互換確認
+  // Default value backward-compatibility
   // ----------------------------------------------------------------
 
-  // 引数省略（既定）で init が throw しない
+  // init with defaults (no arguments) must not throw
   func testDefaultInit_doesNotThrow() {
     XCTAssertNoThrow(try TestableServer(port: 8888, registry: registry))
   }
 
-  // 既定 host は "127.0.0.1"（ループバック限定）
+  // Default host is "127.0.0.1" (loopback only)
   func testDefaultInit_hostIsLoopback() throws {
     let server = try TestableServer(port: 8888, registry: registry)
-    XCTAssertEqual(server.host, "127.0.0.1", "既定 host はループバック 127.0.0.1")
+    XCTAssertEqual(server.host, "127.0.0.1", "Default host should be loopback 127.0.0.1")
   }
 
-  // 既定 port は 8888
+  // Default port is 8888
   func testDefaultInit_portIsEightEightEightEight() throws {
     let server = try TestableServer(port: 8888, registry: registry)
-    XCTAssertEqual(server.port, 8888, "既定 port は 8888")
+    XCTAssertEqual(server.port, 8888, "Default port should be 8888")
   }
 
   // ----------------------------------------------------------------
-  // ホスト明示指定
+  // Explicit host
   // ----------------------------------------------------------------
 
-  // "0.0.0.0" 指定（LAN 公開）で init が throw しない
+  // "0.0.0.0" (LAN public) must not throw
   func testLanPublicHost_doesNotThrow() {
     XCTAssertNoThrow(try TestableServer(port: 8888, host: "0.0.0.0", registry: registry))
   }
 
-  // "0.0.0.0" 指定で host プロパティが反映される
+  // "0.0.0.0" must be reflected in the host property
   func testLanPublicHost_hostIsZeroZeroZeroZero() throws {
     let server = try TestableServer(port: 8888, host: "0.0.0.0", registry: registry)
-    XCTAssertEqual(server.host, "0.0.0.0", "LAN 公開ホスト 0.0.0.0 がプロパティに反映される")
+    XCTAssertEqual(server.host, "0.0.0.0", "LAN public host 0.0.0.0 must be reflected in the property")
   }
 
-  // カスタムホスト文字列が host プロパティに反映される
+  // Custom host string must be reflected in the host property
   func testCustomHost_isReflected() throws {
     let server = try TestableServer(port: 8888, host: "192.168.1.100", registry: registry)
-    XCTAssertEqual(server.host, "192.168.1.100", "カスタムホストがプロパティに反映される")
+    XCTAssertEqual(server.host, "192.168.1.100", "Custom host must be reflected in the property")
   }
 
   // ----------------------------------------------------------------
-  // ポート明示指定
+  // Explicit port
   // ----------------------------------------------------------------
 
-  // カスタムポートが port プロパティに反映される
+  // Custom port must be reflected in the port property
   func testCustomPort_isReflected() throws {
     let server = try TestableServer(port: 9999, registry: registry)
-    XCTAssertEqual(server.port, 9999, "カスタムポートがプロパティに反映される")
+    XCTAssertEqual(server.port, 9999, "Custom port must be reflected in the property")
   }
 
-  // host と port を両方明示して init が throw しない
+  // Specifying both host and port must not throw
   func testCustomHostAndPort_doesNotThrow() {
     XCTAssertNoThrow(try TestableServer(port: 9000, host: "0.0.0.0", registry: registry))
   }
 
-  // host と port の両方が反映される
+  // Both host and port must be reflected in their properties
   func testCustomHostAndPort_bothReflected() throws {
     let server = try TestableServer(port: 9000, host: "0.0.0.0", registry: registry)
-    XCTAssertEqual(server.host, "0.0.0.0", "カスタムホストが反映される")
-    XCTAssertEqual(server.port, 9000, "カスタムポートが反映される")
+    XCTAssertEqual(server.host, "0.0.0.0", "Custom host must be reflected")
+    XCTAssertEqual(server.port, 9000, "Custom port must be reflected")
   }
 
   // ----------------------------------------------------------------
-  // 後方互換: registry 注入 API に host 引数を追加しても既存呼び出しが壊れない
+  // Backward compatibility: adding host argument must not break existing callers
   // ----------------------------------------------------------------
 
-  // host 省略で従来と同じシグネチャが使える（後方互換確認）
+  // Omitting host must use the same signature as before (backward compatibility check)
   func testBackwardCompatibility_existingCallers() throws {
-    // 既存の DemoApp / CLI の呼び出しパターン（host 引数なし）
+    // Calling pattern used by existing DemoApp / CLI (no host argument)
     let server = try TestableServer(port: 8888, registry: registry)
-    XCTAssertNotNil(server, "host 引数省略で既存シグネチャが動く")
+    XCTAssertNotNil(server, "Omitting host argument must work with the existing signature")
     XCTAssertEqual(server.port, 8888)
     XCTAssertEqual(server.host, "127.0.0.1")
   }
 
   // ----------------------------------------------------------------
-  // screenshotProvider 注入テスト（Step 4 追加）
+  // screenshotProvider injection tests (Step 4 addition)
   // ----------------------------------------------------------------
 
-  // screenshotProvider なしで init が throw しない（後方互換）
+  // init without screenshotProvider must not throw (backward compatibility)
   func testInit_withoutProvider_doesNotThrow() {
     XCTAssertNoThrow(try TestableServer(port: 8888, registry: registry),
-                     "screenshotProvider 省略で既存シグネチャが動く")
+                     "Omitting screenshotProvider must work with the existing signature")
   }
 
-  // screenshotProvider を渡しても init が throw しない
+  // init with screenshotProvider must not throw
   func testInit_withProvider_doesNotThrow() {
     let provider: TestableServer.ScreenshotProvider = { Data("fake-png".utf8) }
     XCTAssertNoThrow(try TestableServer(port: 8888, registry: registry, screenshotProvider: provider),
-                     "screenshotProvider 指定で init が throw しない")
+                     "Specifying screenshotProvider must not cause init to throw")
   }
 
-  // GET /screenshot: provider なし → 503 エラー JSON
+  // GET /screenshot without provider → 503 error JSON
   func testGetScreenshot_withoutProvider_returns503() async throws {
     let testPort: UInt16 = 9875
     let server = try TestableServer(port: testPort, registry: registry)
@@ -117,13 +117,13 @@ final class TestableServerTests: XCTestCase {
     let url = URL(string: "http://127.0.0.1:\(testPort)/screenshot")!
     let (data, response) = try await URLSession.shared.data(from: url)
     let httpResp = try XCTUnwrap(response as? HTTPURLResponse)
-    XCTAssertEqual(httpResp.statusCode, 503, "provider 未設定時は 503 を返す")
+    XCTAssertEqual(httpResp.statusCode, 503, "Must return 503 when provider is not configured")
 
     let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-    XCTAssertNotNil(json?["error"], "エラー JSON に 'error' キーが含まれる")
+    XCTAssertNotNil(json?["error"], "Error JSON must contain an 'error' key")
   }
 
-  // GET /screenshot: stub provider → 200 + base64
+  // GET /screenshot with stub provider → 200 + base64
   func testGetScreenshot_withStubProvider_returnsBase64() async throws {
     let testPort: UInt16 = 9876
     let fakeImageData = Data("fake-png-data-for-test".utf8)
@@ -136,19 +136,19 @@ final class TestableServerTests: XCTestCase {
     let url = URL(string: "http://127.0.0.1:\(testPort)/screenshot")!
     let (data, response) = try await URLSession.shared.data(from: url)
     let httpResp = try XCTUnwrap(response as? HTTPURLResponse)
-    XCTAssertEqual(httpResp.statusCode, 200, "stub provider 指定時は 200 を返す")
+    XCTAssertEqual(httpResp.statusCode, 200, "Must return 200 when stub provider is configured")
 
     let json = try JSONDecoder().decode([String: String].self, from: data)
-    XCTAssertEqual(json["format"], "png", "format フィールドが 'png'")
+    XCTAssertEqual(json["format"], "png", "format field must be 'png'")
     XCTAssertEqual(json["image_base64"], fakeImageData.base64EncodedString(),
-                   "provider が返した Data が base64 で返る")
+                   "The Data returned by the provider must come back as base64")
   }
 
   // ----------------------------------------------------------------
-  // graceful shutdown（stop）・ポート競合検知（STEP 3 追加）
+  // Graceful shutdown (stop) / port conflict detection (STEP 3 addition)
   // ----------------------------------------------------------------
 
-  // start → ready 状態が onStateChange へ届く
+  // start → ready state must arrive via onStateChange
   func testStart_emitsReadyState() throws {
     let testPort: UInt16 = 9801
     let server = try TestableServer(port: testPort, registry: registry)
@@ -161,7 +161,7 @@ final class TestableServerTests: XCTestCase {
     server.stop()
   }
 
-  // stop() で graceful shutdown され .cancelled が届く
+  // stop() must trigger graceful shutdown and deliver .cancelled
   func testStop_emitsCancelledState() throws {
     let testPort: UInt16 = 9802
     let server = try TestableServer(port: testPort, registry: registry)
@@ -180,7 +180,7 @@ final class TestableServerTests: XCTestCase {
     wait(for: [cancelledExp], timeout: 2.0)
   }
 
-  // stop() の多重呼び出しはクラッシュしない（idempotent）
+  // Multiple stop() calls must not crash (idempotent)
   func testStop_isIdempotent() throws {
     let testPort: UInt16 = 9803
     let server = try TestableServer(port: testPort, registry: registry)
@@ -195,7 +195,7 @@ final class TestableServerTests: XCTestCase {
     server.stop()
   }
 
-  // 同一ポートを 2 つ目のサーバが掴むと .failed が届く（ポート競合の挙動定義）
+  // A second server on the same port must receive .failed (port conflict behavior)
   func testPortConflict_emitsFailedState() throws {
     let testPort: UInt16 = 9804
     let serverA = try TestableServer(port: testPort, registry: registry)

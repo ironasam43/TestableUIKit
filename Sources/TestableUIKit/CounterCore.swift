@@ -1,8 +1,8 @@
 import Foundation
 
-// MARK: - 共有状態 struct
+// MARK: - Shared State Struct
 
-/// Counter の状態を保持する純粋な値型（SwiftUI View 用）
+/// Pure value type holding Counter state (for use with SwiftUI Views)
 public struct CounterState {
   public var count: Int = 0
   public var isEnabled: Bool = true
@@ -10,9 +10,9 @@ public struct CounterState {
   public init() {}
 }
 
-// MARK: - 純粋コマンド処理関数
+// MARK: - Pure Command Processing Functions
 
-/// 2キー describedState を生成する純粋関数
+/// Pure function that produces a 2-key describedState
 public func makeCounterDescribedState(_ state: CounterState) -> [String: JSONValue] {
   [
     "count": .int(state.count),
@@ -20,28 +20,28 @@ public func makeCounterDescribedState(_ state: CounterState) -> [String: JSONVal
   ]
 }
 
-/// increment コマンド処理
-/// - 意味論: isEnabled == false なら no-op。有効時は count を 1 加算する。
+/// Handles the increment command
+/// - Semantics: no-op when isEnabled == false; increments count by 1 when enabled
 public func applyIncrement(to state: inout CounterState) {
   guard state.isEnabled else { return }
   state.count += 1
 }
 
-/// decrement コマンド処理
-/// - 意味論: isEnabled == false なら no-op。有効時は count を 1 減算する（負の値も可）。
+/// Handles the decrement command
+/// - Semantics: no-op when isEnabled == false; decrements count by 1 when enabled (negative values allowed)
 public func applyDecrement(to state: inout CounterState) {
   guard state.isEnabled else { return }
   state.count -= 1
 }
 
-/// reset コマンド処理
-/// - 意味論: isEnabled に関わらず count を 0 にリセットする。
+/// Handles the reset command
+/// - Semantics: resets count to 0 regardless of isEnabled
 public func applyCounterReset(to state: inout CounterState) {
   state.count = 0
 }
 
-/// setProperty コマンド処理（parameters: {"key": string, "value": <value>}）
-/// サポートキー: count（int）/ isEnabled（bool）
+/// Handles the setProperty command (parameters: {"key": string, "value": <value>})
+/// Supported keys: count (int) / isEnabled (bool)
 public func applyCounterSetProperty(
   to state: inout CounterState,
   parameters: JSONValue

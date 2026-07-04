@@ -4,10 +4,10 @@ TestableUIKit Test Runner - Two Phase Verification
 Phase A: Network path verification (ping)
 Phase B: Logic verification (tap)
 
-【実行前のチェック】
-1. iOS Simulator が起動していることを確認
-2. DemoApp が Simulator 上で実行中であることを確認
-3. Xcode のコンソールに "[SERVER] Started on http://localhost:8888" が表示されていることを確認
+Pre-flight checks:
+1. Confirm iOS Simulator is running
+2. Confirm DemoApp is running on the Simulator
+3. Confirm "[SERVER] Started on http://localhost:8888" appears in Xcode console
 """
 
 import json
@@ -52,7 +52,7 @@ def send_http_request(method: str, path: str, data: dict = None) -> dict:
 
 
 def check_prerequisites():
-    """実行前の環境チェック"""
+    """Pre-flight environment check."""
     print("=" * 70)
     print("Preflight Checks")
     print("=" * 70)

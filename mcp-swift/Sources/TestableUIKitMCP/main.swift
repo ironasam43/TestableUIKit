@@ -2,22 +2,22 @@
 //  main.swift
 //  TestableUIKitMCP
 //
-//  TestableUIKit MCP Server（Swift 版） — UI テスト用 MCP ラッパー
+//  TestableUIKit MCP Server (Swift) — MCP wrapper for UI testing
 //
-//  TestableUIKit の HTTP IPC（localhost:8888）を MCP tool で薄くラップし、
-//  Claude が実行中の iOS UI を直接駆動・describedState を構造化検査できる。
-//  状態レス HTTP 中継のみで、TestableUIKit の Swift 型は import しない。
+//  Thinly wraps TestableUIKit's HTTP IPC (localhost:8888) as MCP tools,
+//  enabling Claude to drive a running iOS UI and inspect describedState in a structured way.
+//  Stateless HTTP relay only — does not import TestableUIKit's Swift types.
 //
-//  公開する MCP tool（5本）:
-//    ui_ping         — GET /ping            死活確認
-//    ui_getState     — POST /perform getState  状態取得
-//    ui_perform      — POST /perform          コマンド実行（tap/setProperty など）
-//    ui_screenshot   — GET /screenshot（一次）/ simctl（loopback フォールバック）
-//    ui_runScenario  — 宣言的 JSON シナリオ（複数ステップ＋expect assert）を順に実行
+//  Exposed MCP tools (5):
+//    ui_ping         — GET /ping            liveness check
+//    ui_getState     — POST /perform getState  state retrieval
+//    ui_perform      — POST /perform          command execution (tap/setProperty, etc.)
+//    ui_screenshot   — GET /screenshot (primary) / simctl (loopback fallback)
+//    ui_runScenario  — runs a declarative JSON scenario (multi-step + expect assertions) in order
 //
-//  前提:
-//    DemoApp が iOS 実機 / Simulator 上で起動済み（:8888 でリッスン中）。
-//    接続先は環境変数 TESTABLE_IPC_HOST / TESTABLE_IPC_PORT で上書き可。
+//  Prerequisites:
+//    DemoApp is running on a physical device/Simulator (listening on :8888).
+//    Connection target can be overridden via TESTABLE_IPC_HOST / TESTABLE_IPC_PORT env vars.
 //
 
 import Foundation
@@ -25,7 +25,7 @@ import MCP
 import TestableUIKitMCPCore
 
 // ================================================================
-// 接続先解決（環境変数 → host/port）
+// Resolve connection target (env vars → host/port)
 // ================================================================
 
 let (ipcHost, ipcPort) = IPCHelpers.resolveIPCHostPort(
@@ -34,7 +34,7 @@ let (ipcHost, ipcPort) = IPCHelpers.resolveIPCHostPort(
 let ipcBase = IPCHelpers.buildBaseURL(host: ipcHost, port: ipcPort)
 
 // ================================================================
-// HTTP 中継ユーティリティ（URLSession）
+// HTTP relay utilities (URLSession)
 // ================================================================
 
 enum IPCError: Error, CustomStringConvertible {
@@ -44,14 +44,14 @@ enum IPCError: Error, CustomStringConvertible {
 
   var description: String {
     switch self {
-    case .badURL(let u): return "不正な URL: \(u)"
+    case .badURL(let u): return "invalid URL: \(u)"
     case .httpStatus(let code, let body): return "HTTP \(code): \(body)"
     case .transport(let msg): return msg
     }
   }
 }
 
-/// GET リクエストを送りレスポンス本文（文字列）を返す。
+/// Sends a GET request and returns the response body as a string.
 func httpGET(_ urlString: String, timeout: TimeInterval = 10) async throws -> (Int, Data) {
   guard let url = URL(string: urlString) else { throw IPCError.badURL(urlString) }
   var req = URLRequest(url: url)
@@ -62,7 +62,7 @@ func httpGET(_ urlString: String, timeout: TimeInterval = 10) async throws -> (I
   return (code, data)
 }
 
-/// POST リクエスト（JSON body）を送りレスポンス本文（文字列）を返す。
+/// Sends a POST request with a JSON body and returns the response body as a string.
 func httpPOSTJSON(_ urlString: String, body: String, timeout: TimeInterval = 10) async throws -> (Int, Data) {
   guard let url = URL(string: urlString) else { throw IPCError.badURL(urlString) }
   var req = URLRequest(url: url)
@@ -79,24 +79,24 @@ func bodyString(_ data: Data) -> String {
   return String(data: data, encoding: .utf8) ?? ""
 }
 
-/// MCP の Value を JSON 文字列へシリアライズする（perform の parameters 用）。
+/// Serializes an MCP Value to a JSON string (for perform parameters).
 func jsonString(from value: Value) -> String? {
   guard let data = try? JSONEncoder().encode(value) else { return nil }
   return String(data: data, encoding: .utf8)
 }
 
 // ================================================================
-// ツール実体（HTTP を薄く中継・状態レス）
+// Tool implementations (thin stateless HTTP relay)
 // ================================================================
 
-/// GET /ping 死活確認。レスポンス JSON 文字列を返す。
+/// GET /ping liveness check. Returns response JSON string.
 func uiPing() async throws -> String {
   let (code, data) = try await httpGET("\(ipcBase)/ping", timeout: 5)
   guard code == 200 else { throw IPCError.httpStatus(code, bodyString(data)) }
   return bodyString(data)
 }
 
-/// POST /perform getState 状態取得。
+/// POST /perform getState — retrieves component state.
 func uiGetState(testID: String) async throws -> String {
   let payload = IPCHelpers.buildPerformPayload(testID: testID, commandName: "getState")
   let (code, data) = try await httpPOSTJSON("\(ipcBase)/perform", body: payload)
@@ -104,7 +104,7 @@ func uiGetState(testID: String) async throws -> String {
   return bodyString(data)
 }
 
-/// POST /perform コマンド実行。
+/// POST /perform — executes a command on a component.
 func uiPerform(testID: String, command: String, params: Value?) async throws -> String {
   let paramsJSON: String?
   if let params, params != .null {
@@ -120,8 +120,8 @@ func uiPerform(testID: String, command: String, params: Value?) async throws -> 
   return bodyString(data)
 }
 
-/// GET /screenshot（一次経路）。失敗時 loopback のみ simctl フォールバック。
-/// 戻り値: (base64 PNG, mimeType)
+/// GET /screenshot (primary path). Falls back to simctl only when host is loopback.
+/// Returns: (base64 PNG, mimeType)
 func uiScreenshot() async throws -> (base64: String, mimeType: String) {
   let url = IPCHelpers.buildScreenshotURL(host: ipcHost, port: ipcPort)
   do {
@@ -132,33 +132,33 @@ func uiScreenshot() async throws -> (base64: String, mimeType: String) {
         let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
         let b64 = obj["image_base64"] as? String
       else {
-        throw IPCError.transport("GET /screenshot のレスポンス解析に失敗: \(bodyString(data))")
+        throw IPCError.transport("Failed to parse GET /screenshot response: \(bodyString(data))")
       }
       return (b64, "image/png")
     }
     throw IPCError.httpStatus(code, bodyString(data))
   } catch let err as IPCError {
-    // HTTP ステータス異常はそのまま伝播（provider 未設定 503 等）
+    // Propagate HTTP status errors as-is (e.g. 503 when provider is not configured)
     if case .httpStatus = err { throw err }
-    // 接続失敗系 → loopback のみ simctl フォールバック
+    // Connection failure → simctl fallback (loopback only)
     return try screenshotViaSimctl()
   } catch {
-    // URLSession の接続失敗など → loopback のみ simctl フォールバック
+    // URLSession connection failure, etc. → simctl fallback (loopback only)
     if !IPCHelpers.isLoopbackHost(ipcHost) {
       throw IPCError.transport(
-        "GET /screenshot への接続に失敗しました (host=\(ipcHost)): \(error)\n"
-          + "実機接続時は DemoApp が起動中で GET /screenshot が有効か確認してください。"
+        "Failed to connect to GET /screenshot (host=\(ipcHost)): \(error)\n"
+          + "When connecting to a physical device, ensure DemoApp is running and GET /screenshot is enabled."
       )
     }
     return try screenshotViaSimctl()
   }
 }
 
-/// Simulator 専用フォールバック: simctl io booted screenshot。
+/// Simulator-only fallback: simctl io booted screenshot.
 func screenshotViaSimctl() throws -> (base64: String, mimeType: String) {
   guard IPCHelpers.isLoopbackHost(ipcHost) else {
     throw IPCError.transport(
-      "GET /screenshot 不達かつ非 loopback (host=\(ipcHost)) のため simctl フォールバック不可。"
+      "GET /screenshot unreachable and host is not loopback (host=\(ipcHost)); simctl fallback unavailable."
     )
   }
   let tmp = NSTemporaryDirectory() + "testableui-shot-\(ProcessInfo.processInfo.processIdentifier).png"
@@ -173,20 +173,20 @@ func screenshotViaSimctl() throws -> (base64: String, mimeType: String) {
   defer { try? FileManager.default.removeItem(atPath: tmp) }
   guard proc.terminationStatus == 0 else {
     let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
-    throw IPCError.transport("simctl screenshot 失敗: \(bodyString(errData))")
+    throw IPCError.transport("simctl screenshot failed: \(bodyString(errData))")
   }
   guard let png = FileManager.default.contents(atPath: tmp) else {
-    throw IPCError.transport("simctl 出力ファイルの読み込みに失敗: \(tmp)")
+    throw IPCError.transport("Failed to read simctl output file: \(tmp)")
   }
   return (png.base64EncodedString(), "image/png")
 }
 
-/// 宣言的 JSON シナリオ（Scenario）を先頭から順に実行し、各ステップの
-/// describedState を expect と突合、pass/fail を集約した ScenarioResult を
-/// JSON 文字列で返す。
+/// Executes a declarative JSON scenario (Scenario) from the beginning in order.
+/// Matches each step's describedState against expect, then returns the aggregated
+/// pass/fail ScenarioResult as a JSON string.
 ///
-/// ステップ実行が失敗（HTTP 異常・`{"error":...}` 応答・デコード失敗）しても
-/// シナリオ全体は中断せず、当該ステップを fail として記録し次のステップへ進む。
+/// Even if a step fails (HTTP error, `{"error":...}` response, or decode failure),
+/// the scenario continues without aborting; the failed step is recorded and execution proceeds to the next step.
 func uiRunScenario(scenarioJSON: String) async throws -> String {
   let scenario = try ScenarioParser.parse(jsonString: scenarioJSON)
   var stepResults: [StepResult] = []
@@ -213,7 +213,7 @@ func uiRunScenario(scenarioJSON: String) async throws -> String {
   return String(data: data, encoding: .utf8) ?? "{}"
 }
 
-/// 1 ステップぶんの /perform 送信・応答デコード・assert 評価をまとめて行う。
+/// Sends /perform, decodes the response, and evaluates asserts for a single step.
 func runScenarioStep(index: Int, step: ScenarioStep, payload: String) async -> StepResult {
   func failure(_ message: String) -> StepResult {
     StepResult(
@@ -229,7 +229,7 @@ func runScenarioStep(index: Int, step: ScenarioStep, payload: String) async -> S
     }
     let decoded = try JSONDecoder().decode(JSONValue.self, from: data)
     guard let obj = decoded.objectValue else {
-      return failure("/perform 応答が object ではありません: \(bodyString(data))")
+      return failure("/perform response is not an object: \(bodyString(data))")
     }
     if case .string(let errMsg)? = obj["error"] {
       return failure(errMsg)
@@ -246,7 +246,7 @@ func runScenarioStep(index: Int, step: ScenarioStep, payload: String) async -> S
 }
 
 // ================================================================
-// MCP サーバ構築（ツール登録・stdio transport）
+// MCP server setup (tool registration / stdio transport)
 // ================================================================
 
 let server = Server(
@@ -259,18 +259,18 @@ await server.withMethodHandler(ListTools.self) { _ in
   let tools = [
     Tool(
       name: "ui_ping",
-      description: "TestableUIKit サーバーの死活確認（GET /ping）。DemoApp が起動中か確認する。",
+      description: "Liveness check for the TestableUIKit server (GET /ping). Confirms DemoApp is running.",
       inputSchema: .object(["type": .string("object"), "properties": .object([:])])
     ),
     Tool(
       name: "ui_getState",
-      description: "指定コンポーネントの現在の describedState を取得する（POST /perform getState）。",
+      description: "Retrieves the current describedState of the specified component (POST /perform getState).",
       inputSchema: .object([
         "type": .string("object"),
         "properties": .object([
           "testID": .object([
             "type": .string("string"),
-            "description": .string("コンポーネントの testID（例: scene.auth.loginButton）"),
+            "description": .string("testID of the component (e.g. scene.auth.loginButton)"),
           ])
         ]),
         "required": .array([.string("testID")]),
@@ -278,21 +278,21 @@ await server.withMethodHandler(ListTools.self) { _ in
     ),
     Tool(
       name: "ui_perform",
-      description: "コンポーネントにコマンドを送信する（POST /perform）。tap / setProperty / setEnabled / increment など。",
+      description: "Sends a command to a component (POST /perform). Supports tap / setProperty / setEnabled / increment, etc.",
       inputSchema: .object([
         "type": .string("object"),
         "properties": .object([
           "testID": .object([
             "type": .string("string"),
-            "description": .string("コンポーネントの testID"),
+            "description": .string("testID of the component"),
           ]),
           "command": .object([
             "type": .string("string"),
-            "description": .string("コマンド名（tap / setProperty / setEnabled / increment など）"),
+            "description": .string("Command name (tap / setProperty / setEnabled / increment, etc.)"),
           ]),
           "params": .object([
             "type": .string("object"),
-            "description": .string("コマンドパラメータ（コマンドにより異なる。省略可）"),
+            "description": .string("Command parameters (varies by command; optional)"),
           ]),
         ]),
         "required": .array([.string("testID"), .string("command")]),
@@ -300,28 +300,28 @@ await server.withMethodHandler(ListTools.self) { _ in
     ),
     Tool(
       name: "ui_screenshot",
-      description: "起動中の DemoApp（実機 / Simulator）のスクリーンショットを取得する（GET /screenshot 一次・simctl フォールバック）。",
+      description: "Captures a screenshot of the running DemoApp (physical device / Simulator) via GET /screenshot (primary) with simctl fallback.",
       inputSchema: .object(["type": .string("object"), "properties": .object([:])])
     ),
     Tool(
       name: "ui_runScenario",
       description:
-        "宣言的 JSON シナリオ（複数ステップの action/testID/parameters/expect 列）を先頭から順に実行し、"
-        + "各ステップの describedState を expect と突合した pass/fail 結果を構造化して返す。",
+        "Executes a declarative JSON scenario (a sequence of action/testID/parameters/expect steps) from the beginning in order, "
+        + "then returns structured pass/fail results by matching each step's describedState against expect.",
       inputSchema: .object([
         "type": .string("object"),
         "properties": .object([
           "scenario": .object([
             "type": .string("object"),
-            "description": .string("シナリオ定義オブジェクト"),
+            "description": .string("Scenario definition object"),
             "properties": .object([
               "name": .object([
                 "type": .string("string"),
-                "description": .string("シナリオ名"),
+                "description": .string("Scenario name"),
               ]),
               "steps": .object([
                 "type": .string("array"),
-                "description": .string("実行ステップの配列"),
+                "description": .string("Array of steps to execute"),
                 "items": .object([
                   "type": .string("object"),
                   "properties": .object([
@@ -329,24 +329,24 @@ await server.withMethodHandler(ListTools.self) { _ in
                       "type": .string("string"),
                       "enum": .array(ScenarioAction.known.map { .string($0) }),
                       "description": .string(
-                        "実行コマンド: getState / setProperty（ユニバーサル） "
-                        + "| tap / increment / decrement / reset / toggle / clear / setEnabled（コンポーネント固有）"),
+                        "Command to execute: getState / setProperty (universal) "
+                        + "| tap / increment / decrement / reset / toggle / clear / setEnabled (component-specific)"),
                     ]),
                     "testID": .object([
                       "type": .string("string"),
-                      "description": .string("対象コンポーネントの testID"),
+                      "description": .string("testID of the target component"),
                     ]),
                     "parameters": .object([
                       "type": .string("object"),
                       "description": .string(
-                        "コマンドパラメータ（省略可）。setProperty は { \"key\": string, \"value\": any } 形式"),
+                        "Command parameters (optional). setProperty uses { \"key\": string, \"value\": any } format"),
                     ]),
                     "expect": .object([
                       "type": .string("object"),
                       "description": .string(
-                        "実行後の assert キー・期待値（省略可）。"
-                        + "固定キー: isEnabled / title / isHidden / alpha / backgroundColor "
-                        + "| コンポーネント固有: count / isOn / label / value / text など"),
+                        "Assert key/expected-value pairs after execution (optional). "
+                        + "Fixed keys: isEnabled / title / isHidden / alpha / backgroundColor "
+                        + "| Component-specific: count / isOn / label / value / text, etc."),
                     ]),
                   ]),
                   "required": .array([.string("action"), .string("testID")]),
@@ -373,7 +373,7 @@ await server.withMethodHandler(CallTool.self) { params in
 
     case "ui_getState":
       guard let testID = params.arguments?["testID"]?.stringValue else {
-        return .init(content: [.text(text: "testID は必須です", annotations: nil, _meta: nil)], isError: true)
+        return .init(content: [.text(text: "testID is required", annotations: nil, _meta: nil)], isError: true)
       }
       let json = try await uiGetState(testID: testID)
       return .init(content: [.text(text: json, annotations: nil, _meta: nil)], isError: false)
@@ -382,7 +382,7 @@ await server.withMethodHandler(CallTool.self) { params in
       guard let testID = params.arguments?["testID"]?.stringValue,
         let command = params.arguments?["command"]?.stringValue
       else {
-        return .init(content: [.text(text: "testID と command は必須です", annotations: nil, _meta: nil)], isError: true)
+        return .init(content: [.text(text: "testID and command are required", annotations: nil, _meta: nil)], isError: true)
       }
       let json = try await uiPerform(
         testID: testID, command: command, params: params.arguments?["params"]
@@ -395,25 +395,25 @@ await server.withMethodHandler(CallTool.self) { params in
 
     case "ui_runScenario":
       guard let scenarioValue = params.arguments?["scenario"] else {
-        return .init(content: [.text(text: "scenario は必須です", annotations: nil, _meta: nil)], isError: true)
+        return .init(content: [.text(text: "scenario is required", annotations: nil, _meta: nil)], isError: true)
       }
       guard let scenarioJSON = jsonString(from: scenarioValue) else {
         return .init(
-          content: [.text(text: "scenario のシリアライズに失敗しました", annotations: nil, _meta: nil)],
+          content: [.text(text: "Failed to serialize scenario", annotations: nil, _meta: nil)],
           isError: true)
       }
       let resultJSON = try await uiRunScenario(scenarioJSON: scenarioJSON)
       return .init(content: [.text(text: resultJSON, annotations: nil, _meta: nil)], isError: false)
 
     default:
-      return .init(content: [.text(text: "未知のツール: \(params.name)", annotations: nil, _meta: nil)], isError: true)
+      return .init(content: [.text(text: "Unknown tool: \(params.name)", annotations: nil, _meta: nil)], isError: true)
     }
   } catch {
-    return .init(content: [.text(text: "エラー: \(error)", annotations: nil, _meta: nil)], isError: true)
+    return .init(content: [.text(text: "Error: \(error)", annotations: nil, _meta: nil)], isError: true)
   }
 }
 
-// --- stdio transport で起動し完了まで待機 ---
+// --- Start with stdio transport and wait for completion ---
 let transport = StdioTransport()
 try await server.start(transport: transport)
 await server.waitUntilCompleted()

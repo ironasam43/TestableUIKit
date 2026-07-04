@@ -1,8 +1,8 @@
 import Foundation
 
-// MARK: - 共有状態 struct
+// MARK: - Shared State Struct
 
-/// RangeSlider の状態を保持する純粋な値型（SwiftUI View 用）
+/// Pure value type holding RangeSlider state (for use with SwiftUI Views)
 public struct RangeSliderState {
   public var value: Double = 50.0
   public var minValue: Double = 0.0
@@ -12,9 +12,9 @@ public struct RangeSliderState {
   public init() {}
 }
 
-// MARK: - 純粋コマンド処理関数
+// MARK: - Pure Command Processing Functions
 
-/// 4キー describedState を生成する純粋関数
+/// Pure function that produces a 4-key describedState
 public func makeRangeSliderDescribedState(_ state: RangeSliderState) -> [String: JSONValue] {
   [
     "value": .double(state.value),
@@ -24,14 +24,14 @@ public func makeRangeSliderDescribedState(_ state: RangeSliderState) -> [String:
   ]
 }
 
-/// reset コマンド処理
-/// - 意味論: value を (maxValue - minValue) / 2 + minValue にリセットする（中央値）。
+/// Handles the reset command
+/// - Semantics: resets value to the midpoint: (maxValue - minValue) / 2 + minValue
 public func applyRangeSliderReset(to state: inout RangeSliderState) {
   state.value = (state.maxValue - state.minValue) / 2 + state.minValue
 }
 
-/// setProperty コマンド処理（parameters: {"key": string, "value": <value>}）
-/// サポートキー: value（double）/ minValue（double）/ maxValue（double）/ step（double）
+/// Handles the setProperty command (parameters: {"key": string, "value": <value>})
+/// Supported keys: value (double) / minValue (double) / maxValue (double) / step (double)
 public func applyRangeSliderSetProperty(
   to state: inout RangeSliderState,
   parameters: JSONValue

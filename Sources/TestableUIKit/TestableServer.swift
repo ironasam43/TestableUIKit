@@ -3,45 +3,45 @@ import Foundation
 
 @available(iOS 15.0, macOS 12.0, *)
 public final class TestableServer: @unchecked Sendable {
-  /// スクリーンショット PNG データを返すクロージャ型。
-  /// アプリ側（DemoApp 等）が注入することで、TestableServer は UIKit/window を知らなくて済む。
+  /// Closure type that returns screenshot PNG data.
+  /// Injected by the app side (DemoApp, etc.) so that TestableServer does not need to know UIKit/window.
   public typealias ScreenshotProvider = @MainActor @Sendable () async throws -> Data
 
-  /// サーバの待ち受け状態。`onStateChange` で外部へ通知される。
-  /// ポート競合（EADDRINUSE）などの起動失敗は `.failed` として届く。
+  /// Server listening state. Notified to outside via `onStateChange`.
+  /// Startup failures such as port conflicts (EADDRINUSE) arrive as `.failed`.
   public enum State: Sendable, Equatable {
-    case setup            // 初期状態（start 前）
-    case ready            // listen 開始・接続受付可能
-    case failed(String)   // 起動失敗（ポート競合など）。文字列はエラー説明
-    case cancelled        // stop() による graceful shutdown 完了
+    case setup            // Initial state (before start)
+    case ready            // Listening started; accepting connections
+    case failed(String)   // Startup failed (port conflict, etc.). String is error description
+    case cancelled        // Graceful shutdown completed via stop()
   }
 
   private let listener: NWListener
   private let queue = DispatchQueue(label: "testable.server", qos: .userInitiated)
   public let port: UInt16
-  /// bind ホスト。"127.0.0.1"（既定）= ループバックのみ / "0.0.0.0" = 全インターフェース（LAN 公開）
+  /// Bind host. "127.0.0.1" (default) = loopback only / "0.0.0.0" = all interfaces (LAN exposure)
   public let host: String
   private let registry: TestableRegistry
-  /// スクリーンショット取得クロージャ（nil = 未設定、GET /screenshot は 503 を返す）
+  /// Screenshot retrieval closure (nil = not configured; GET /screenshot returns 503)
   private let screenshotProvider: ScreenshotProvider?
 
-  /// listener 状態の変化を外部へ通知するハンドラ。
-  /// ポート 8888 競合時は `.failed` が届くため、呼び出し側で別ポートへのフォールバックや
-  /// ユーザー通知を実装できる（従来は print のみでプログラム的に検知不能だった）。
+  /// Handler that notifies external callers of listener state changes.
+  /// On port 8888 conflict, `.failed` is delivered, allowing the caller to implement
+  /// fallback to another port or user notification (previously only print; not programmatically detectable).
   public var onStateChange: (@Sendable (State) -> Void)?
 
-  /// 現在 listen 中の接続。stop() で一括キャンセルするため queue 上でのみ触る。
+  /// Currently listening connections. Only touched on queue for bulk cancellation via stop().
   private var connections: [NWConnection] = []
 
   private static let headerSeparator = Data([0x0D, 0x0A, 0x0D, 0x0A]) // \r\n\r\n
 
   /// - Parameters:
-  ///   - port: 待ち受けポート（既定 8888）
-  ///   - host: bind アドレス（既定 "127.0.0.1" = ループバック限定。"0.0.0.0" で LAN 公開可）
-  ///   - registry: コンポーネントの登録・検索に使う Registry インスタンス。
-  ///               アプリ側で生成した同一インスタンスを渡すことでシングルトンを廃止する。
-  ///   - screenshotProvider: スクリーンショット PNG を返すクロージャ。省略（nil）で GET /screenshot は 503。
-  ///                         アプリ側で key window キャプチャを実装して注入する（UIKit 依存を app 側に閉じる）。
+  ///   - port: Listening port (default 8888)
+  ///   - host: Bind address (default "127.0.0.1" = loopback only; "0.0.0.0" enables LAN exposure)
+  ///   - registry: Registry instance used for component registration and lookup.
+  ///               Pass the same instance created on the app side to eliminate singletons.
+  ///   - screenshotProvider: Closure that returns screenshot PNG. Omitting (nil) makes GET /screenshot return 503.
+  ///                         Implement key window capture on the app side and inject it (keeps UIKit dependency in the app).
   public init(port: UInt16 = 8888, host: String = "127.0.0.1", registry: TestableRegistry, screenshotProvider: ScreenshotProvider? = nil) throws {
     self.port = port
     self.host = host
@@ -52,11 +52,11 @@ public final class TestableServer: @unchecked Sendable {
     }
     let params = NWParameters.tcp
     if host == "0.0.0.0" {
-      // 全インターフェース（LAN 公開）— ポートのみ指定し NWListener の既定挙動を使用
+      // All interfaces (LAN exposure) — specify port only, use NWListener default behavior
       self.listener = try NWListener(using: params, on: nwPort)
     } else {
-      // 特定ホストに bind（既定: 127.0.0.1 ループバックのみ）
-      // requiredLocalEndpoint で NW スタックが指定 IP のみで待受する
+      // Bind to specific host (default: 127.0.0.1 loopback only)
+      // requiredLocalEndpoint makes the NW stack listen only on the specified IP
       let endpoint = NWEndpoint.hostPort(host: NWEndpoint.Host(host), port: nwPort)
       params.requiredLocalEndpoint = endpoint
       self.listener = try NWListener(using: params)
@@ -72,7 +72,7 @@ public final class TestableServer: @unchecked Sendable {
         print("✅ TestableServer listening on http://\(host):\(port)")
         self?.onStateChange?(.ready)
       case .failed(let error):
-        // ポート競合（EADDRINUSE）など。従来は print のみで検知不能だった。
+        // Port conflict (EADDRINUSE), etc. Previously only print; not programmatically detectable.
         print("❌ TestableServer failed on \(host):\(port): \(error)")
         self?.onStateChange?(.failed("\(error)"))
       case .cancelled:
@@ -85,7 +85,7 @@ public final class TestableServer: @unchecked Sendable {
     let queue = self.queue
     listener.newConnectionHandler = { [weak self] connection in
       guard let self else { return }
-      // 接続を追跡し、完了/失敗時に取り除く（stop() での一括キャンセル用）。
+      // Track connections and remove them on completion/failure (for bulk cancellation via stop()).
       connection.stateUpdateHandler = { [weak self] cState in
         switch cState {
         case .cancelled, .failed:
@@ -102,8 +102,8 @@ public final class TestableServer: @unchecked Sendable {
     listener.start(queue: queue)
   }
 
-  /// graceful shutdown。listen 中の全接続と listener をキャンセルしてポートを解放する。
-  /// 完了は `onStateChange(.cancelled)` で通知される。多重呼び出しは安全（idempotent）。
+  /// Graceful shutdown. Cancels all active connections and the listener to release the port.
+  /// Completion is notified via `onStateChange(.cancelled)`. Safe to call multiple times (idempotent).
   public func stop() {
     queue.async { [weak self] in
       guard let self else { return }
@@ -117,9 +117,9 @@ public final class TestableServer: @unchecked Sendable {
     receive(connection: connection, accumulated: Data())
   }
 
-  /// NWConnection.receive は部分受信（HTTP ヘッダーとボディが別 TCP セグメントで届く）で
-  /// 即コールバック発火するため、ヘッダー終端 `\r\n\r\n` 未到達、または
-  /// Content-Length 分のボディ未到達なら再帰的に receive を呼んで完全なリクエストを蓄積する。
+  /// NWConnection.receive fires immediately on partial reception (HTTP headers and body may arrive in separate TCP segments).
+  /// If the header terminator `\r\n\r\n` has not been reached, or the body per Content-Length is incomplete,
+  /// this calls receive recursively to accumulate the full request.
   private func receive(connection: NWConnection, accumulated: Data) {
     connection.receive(minimumIncompleteLength: 1, maximumLength: 65536) { [weak self] data, _, isComplete, error in
       guard let self else { connection.cancel(); return }
@@ -134,7 +134,7 @@ public final class TestableServer: @unchecked Sendable {
         buffer.append(data)
       }
 
-      // ヘッダー終端未到達なら継続受信
+      // Header terminator not yet reached; continue receiving
       guard let sepRange = buffer.range(of: Self.headerSeparator) else {
         if isComplete || buffer.count >= 65536 {
           connection.cancel()
@@ -144,7 +144,7 @@ public final class TestableServer: @unchecked Sendable {
         return
       }
 
-      // Content-Length を解析してボディ完了判定
+      // Parse Content-Length and check if body is complete
       let headerData = buffer[..<sepRange.lowerBound]
       let bodyData = buffer[sepRange.upperBound...]
       let headerText = String(data: headerData, encoding: .utf8) ?? ""
@@ -169,7 +169,7 @@ public final class TestableServer: @unchecked Sendable {
     }
   }
 
-  /// HTTP ヘッダー文字列から Content-Length を取り出す（大文字小文字を区別しない）。
+  /// Extracts Content-Length from an HTTP header string (case-insensitive).
   private static func parseContentLength(from headers: String) -> Int? {
     for line in headers.components(separatedBy: "\r\n") {
       let parts = line.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: false)

@@ -1,38 +1,38 @@
-# Example — 自分のコンポーネントをテストする最小サンプル
+# Example — Minimal Sample for Testing Your Own Component
 
-このディレクトリは「自作 SwiftUI コンポーネントを TestableUIKit で計装する」最小サンプルです。
-`MyToggleExample.swift` 1 ファイルに、計装に必要な 3 部品（Core / `AnyTestable` ブリッジ / アプリ配線）が
-すべて収まっています。コピペして自分のプロジェクトの出発点にしてください。
+This directory contains a minimal example of instrumenting a custom SwiftUI component with TestableUIKit.
+All three building blocks needed for instrumentation (Core / `AnyTestable` bridge / app wiring) fit in a single file, `MyToggleExample.swift`.
+Copy and use it as a starting point for your own project.
 
-> このディレクトリは **Swift Package のビルド対象外**（`Sources/` の外）です。
-> ドキュメント・コピペ用リファレンスとして配置しています。実際に動かす手順は
-> [`docs/getting-started.md`](../docs/getting-started.md) を参照してください。
+> This directory is **not part of the Swift Package build** (it lives outside `Sources/`).
+> It serves as documentation and a copy-paste reference. For instructions on actually running the example, see
+> [`docs/getting-started.md`](../docs/getting-started.md).
 
-## ファイル
+## Files
 
-- `MyToggleExample.swift` — トグル（ON/OFF スイッチ）を計装した完結サンプル。
+- `MyToggleExample.swift` — A self-contained example of instrumenting a toggle (ON/OFF switch).
 
-## 計装の 3 部品（おさらい）
+## The 3 Instrumentation Building Blocks (recap)
 
-1. **Core（純粋ロジック）**: 状態 struct ＋ コマンド処理関数。XCTest で直接検証できる値型。
-2. **`AnyTestable` ブリッジ**: `testID` / `describedState` / `perform(...)` を実装し Core を呼ぶ薄いクラス。
-3. **配線**: アプリ起点で 1 つの `TestableRegistry` を生成し、`TestableServer` と
-   `.environment(\.testableRegistry,)` の **両方へ同じインスタンス**を注入。View に `.testable(_:)` を付与。
+1. **Core (pure logic)**: State struct + command-handling functions. A pure value type you can test directly with XCTest.
+2. **`AnyTestable` bridge**: `testID` / `describedState` / `perform(...)` implemented as a thin class that delegates to Core.
+3. **Wiring**: Create one `TestableRegistry` at app entry point and inject the **same instance** into both `TestableServer` and
+   `.environment(\.testableRegistry,)`. Add `.testable(_:)` to the View.
 
-## 動作確認（このトグルを IPC で操作する）
+## Verification (Control this toggle via IPC)
 
 ```bash
-# 状態取得
+# Get state
 curl -X POST http://localhost:8888/perform \
   -H 'Content-Type: application/json' \
   -d '{"testID":"example.my.toggle","commandName":"getState","parameters":null}'
 # => {"isOn":false}
 
-# toggle 実行
+# Execute toggle
 curl -X POST http://localhost:8888/perform \
   -H 'Content-Type: application/json' \
   -d '{"testID":"example.my.toggle","commandName":"toggle","parameters":null}'
 # => {"isOn":true}
 ```
 
-困ったら [`docs/troubleshooting.md`](../docs/troubleshooting.md) を参照してください。
+If you run into trouble, see [`docs/troubleshooting.md`](../docs/troubleshooting.md).

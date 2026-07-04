@@ -1,17 +1,17 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://github.com/ironasam43/TestableUIKit/raw/main/Example/scenarios/scenario.schema.json",
-  "title": "TestableUIKit シナリオスキーマ",
-  "description": "宣言的 UI シナリオ（複数ステップの action/testID/parameters/expect 列）の仕様",
+  "title": "TestableUIKit Scenario Schema",
+  "description": "Schema for a declarative UI scenario (a sequence of action/testID/parameters/expect steps).",
   "type": "object",
   "properties": {
     "name": {
       "type": "string",
-      "description": "シナリオ名（例: counter-flow, login-flow）"
+      "description": "Scenario name (e.g. counter-flow, login-flow)."
     },
     "steps": {
       "type": "array",
-      "description": "実行ステップの配列。先頭から順に実行される",
+      "description": "Array of steps to execute in order from the first.",
       "items": {
         "type": "object",
         "properties": {
@@ -28,19 +28,19 @@
               "clear",
               "setEnabled"
             ],
-            "description": "実行コマンド。ユニバーサル: getState / setProperty | コンポーネント固有: tap / increment / decrement / reset / toggle / clear / setEnabled"
+            "description": "Command to execute. Universal: getState / setProperty | Component-specific: tap / increment / decrement / reset / toggle / clear / setEnabled"
           },
           "testID": {
             "type": "string",
-            "description": "対象コンポーネントの testID（例: scene.demo.counter, scene.auth.loginButton）"
+            "description": "testID of the target component (e.g. scene.demo.counter, scene.auth.loginButton)."
           },
           "parameters": {
             "type": "object",
-            "description": "コマンドパラメータ（省略可）。setProperty の場合は { \"key\": string, \"value\": any } 形式必須。その他コマンドでは通常省略"
+            "description": "Command parameters (optional). setProperty requires { \"key\": string, \"value\": any } format. Usually omitted for other commands."
           },
           "expect": {
             "type": "object",
-            "description": "実行後の assert キー・期待値（省略可）。固定5キー（isEnabled / title / isHidden / alpha / backgroundColor）とコンポーネント固有キー（count / isOn / label / value / text など）の両方を許容",
+            "description": "Assert key/expected-value pairs after execution (optional). Accepts both the five fixed keys (isEnabled / title / isHidden / alpha / backgroundColor) and component-specific keys (count / isOn / label / value / text, etc.).",
             "additionalProperties": true
           }
         },

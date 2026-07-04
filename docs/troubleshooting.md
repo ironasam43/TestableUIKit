@@ -1,42 +1,41 @@
 # Troubleshooting
 
-TestableUIKit の利用中に遭遇しやすい問題と対処をまとめます。
-セットアップ手順は [`SETUP.md`](../SETUP.md)、計装手順は [`docs/getting-started.md`](getting-started.md) を参照してください。
+This guide covers common issues and solutions when using TestableUIKit.
+For setup instructions, see [`SETUP.md`](../SETUP.md); for instrumentation steps, see [`docs/getting-started.md`](getting-started.md).
 
 ---
 
-## サーバ起動・接続
+## Server Startup & Connectivity
 
-### `✅ TestableServer listening on ...` が表示されない
+### `✅ TestableServer listening on ...` not shown
 
-サーバが起動していません。
+The server is not running.
 
-1. アプリ（DemoApp / 自作アプリ）が Simulator・実機で起動しているか確認。
-2. `.task { server.start() }` が呼ばれているか、`TestableServer` の生成が `try?` で握り潰されていないか確認。
-3. Xcode の Console タブでログを確認。
+1. Confirm that the app (DemoApp or your own app) is launched in the Simulator or on a physical device.
+2. Verify that `.task { server.start() }` is being called and that `TestableServer` initialization is not silently swallowed by `try?`.
+3. Check the logs in Xcode's Console tab.
 
 ### `Connection refused` / `Server not reachable`
 
-サーバが対象ホスト・ポートで listen していません。
+The server is not listening on the expected host and port.
 
-1. Xcode コンソールに `✅ TestableServer listening on http://<host>:8888` が出ているか確認。
-2. Simulator の場合: `localhost:8888` でアクセス。実機の場合: `#if DEBUG` で `host: "0.0.0.0"` 公開し、実機 IP を指定（下記「実機（LAN 越し）」）。
-3. Simulator を再起動（`Xcode > Device > Erase All Content and Settings...`）。
-4. ファイアウォール確認（`System Settings > Network > Firewall`）でポート 8888 がブロックされていないか確認。
+1. Confirm that `✅ TestableServer listening on http://<host>:8888` appears in the Xcode console.
+2. For Simulator: access via `localhost:8888`. For a physical device: expose with `host: "0.0.0.0"` under `#if DEBUG` and specify the device IP (see "Physical Device (LAN)" below).
+3. Restart the Simulator (`Xcode > Device > Erase All Content and Settings...`).
+4. Check the firewall (`System Settings > Network > Firewall`) to ensure port 8888 is not blocked.
 
-### ポート 8888 競合（多重起動・別プロセスが使用中）
+### Port 8888 conflict (multiple instances or another process)
 
-既に 8888 を掴むプロセスがあると、`TestableServer.start()` は ready にならず
-`.failed`（`POSIXErrorCode 48: Address already in use`）になります。
+If a process is already holding port 8888, `TestableServer.start()` will not reach the ready state and will instead enter `.failed` (`POSIXErrorCode 48: Address already in use`).
 
-**検知**: `onStateChange` でプログラム的に検知できます（従来は print のみで検知不能でした）。
+**Detection**: You can detect this programmatically via `onStateChange` (previously only detectable via print output).
 
 ```swift
 let server = try TestableServer(port: 8888, registry: registry)
 server.onStateChange = { state in
   switch state {
   case .ready:        print("listening")
-  case .failed(let e): print("起動失敗（ポート競合の可能性）: \(e)")  // ここでフォールバック等
+  case .failed(let e): print("Startup failed (possible port conflict): \(e)")  // handle fallback here
   case .cancelled:    print("stopped")
   default: break
   }
@@ -44,27 +43,24 @@ server.onStateChange = { state in
 server.start()
 ```
 
-**対処**:
+**Resolution**:
 
-1. 競合プロセスを特定して終了する。
+1. Identify and kill the conflicting process.
    ```bash
    lsof -i :8888
    kill <PID>
    ```
-2. 別ポートで起動する（`TestableServer(port: 8889, registry:)`）。利用側の `TESTABLE_IPC_PORT` も合わせる。
-3. 前回起動したアプリ・サーバが残っていないか確認（多重起動）。`server.stop()` を呼んで graceful shutdown すると
-   ポートが解放され、`.cancelled` が `onStateChange` に届きます。
+2. Start on a different port (`TestableServer(port: 8889, registry:)`). Update `TESTABLE_IPC_PORT` on the client side accordingly.
+3. Check that a previously launched app or server is not still running (multiple instances). Calling `server.stop()` for a graceful shutdown releases the port and delivers `.cancelled` to `onStateChange`.
 
-### `Connection refused` だが ping は通る（`component not found` / 404）
+### `Connection refused` but ping succeeds (`component not found` / 404)
 
-`POST /perform` で 404（`component not found`）になる場合、最も多い原因は **Registry 共有もれ**です。
-`.environment(\.testableRegistry, registry)` を注入し忘れると、`.testable(_:)` は空の defaultValue registry へ
-登録され、サーバの registry とは別物になります。アプリ起点で生成した同一 `registry` を
-**サーバと View ツリーの両方**へ渡してください（[`getting-started.md`](getting-started.md) 既知の罠①）。
+If `POST /perform` returns 404 (`component not found`), the most common cause is a **missing Registry injection**.
+If you forget to inject `.environment(\.testableRegistry, registry)`, `.testable(_:)` registers with an empty default-value registry that is separate from the server's registry. Make sure the same `registry` instance created at the app entry point is passed to **both the server and the View tree** (see Gotcha #1 in [`getting-started.md`](getting-started.md)).
 
 ---
 
-## テストランナー（Python）
+## Test Runner (Python)
 
 ### `No module named 'requests'`
 
@@ -74,58 +70,57 @@ pip3 install requests
 
 ### `curl: command not found`
 
-macOS には curl がデフォルト同梱です。PATH を確認します。
+macOS ships with curl by default. Check your PATH.
 
 ```bash
-which curl   # => /usr/bin/curl と表示されれば OK
+which curl   # => /usr/bin/curl if OK
 ```
 
-### Python test が `Connection refused`
+### Python test gives `Connection refused`
 
-1. Xcode で Run し、Simulator・実機でアプリ起動を確認。
-2. コンソールに `✅ TestableServer listening ...` が出るまで待つ。
-3. `python3 run_test.py` を実行。
+1. Run the project in Xcode and confirm the app is launched in the Simulator or on a physical device.
+2. Wait until `✅ TestableServer listening ...` appears in the console.
+3. Run `python3 run_test.py`.
 
 ---
 
-## 実機（LAN 越し）
+## Physical Device (LAN)
 
-### `Connection refused`（実機）
+### `Connection refused` (physical device)
 
-実機の IP が違うか、DemoApp が起動していません。
+The device IP is wrong or DemoApp is not running.
 
-1. 実機で DemoApp が起動していることを確認。
-2. 実機の IP を再確認（設定 > Wi-Fi > 情報）。
-3. Xcode コンソールに `✅ TestableServer listening on http://0.0.0.0:8888` が出ているか確認。
-4. 接続先を実機 IP に指定: `TESTABLE_IPC_HOST=192.168.x.x python3 ...`。
+1. Confirm that DemoApp is running on the physical device.
+2. Double-check the device IP (Settings > Wi-Fi > Info).
+3. Confirm that `✅ TestableServer listening on http://0.0.0.0:8888` appears in the Xcode console.
+4. Set the target to the device IP: `TESTABLE_IPC_HOST=192.168.x.x python3 ...`.
 
-### `Timeout`（実機）
+### `Timeout` (physical device)
 
-実機と Mac が通信できていません。
+The device and Mac cannot communicate.
 
-1. **Wi-Fi**: 両者が同じネットワークに接続しているか確認。
-2. **ファイアウォール**: Mac のファイアウォールでポート 8888 がブロックされていないか確認。
-3. **ネットワーク隔離**: 企業 Wi-Fi など、デバイス間通信が制限されていないか確認。
+1. **Wi-Fi**: Confirm both are connected to the same network.
+2. **Firewall**: Confirm that port 8888 is not blocked by the Mac's firewall.
+3. **Network isolation**: Check whether the network (e.g. corporate Wi-Fi) restricts device-to-device communication.
 
 ### `RuntimeError: simctl not available on a non-loopback host`
 
-実機への接続は成功し、screenshot の simctl フォールバック時に出るログです。
+This log appears when a physical device connection succeeds but the simctl fallback is triggered for screenshots.
 
-- このエラーは無視できます。実機からの `GET /screenshot`（経路A・アプリ内キャプチャ）で
-  既に PNG が取得できています。
-- `simctl` フォールバックは Simulator（loopback）のみ有効です。
-- 経路の詳細は [`SETUP.md`](../SETUP.md) ステップ 7-5 を参照。
+- This error can be safely ignored. `GET /screenshot` (route A — in-app capture) has already successfully retrieved the PNG from the device.
+- The `simctl` fallback is only available on the Simulator (loopback).
+- See [`SETUP.md`](../SETUP.md) step 7-5 for route details.
 
 ---
 
-## コンポーネント挙動
+## Component Behavior
 
-### `isEnabled が false` でコマンドが no-op になる
+### `isEnabled` is `false` and commands are no-ops
 
-多くの Core は `isEnabled == false` のとき増減コマンドを no-op にします。
-`setProperty` で `isEnabled` を `true` に戻すか、初期化時に有効化してください。
+Most cores treat increment/decrement commands as no-ops when `isEnabled == false`.
+Use `setProperty` to restore `isEnabled` to `true`, or ensure the component is enabled at initialization.
 
 ```swift
-// IPC で有効化する例
+// Re-enable via IPC
 // {"commandName":"setProperty","parameters":{"key":"isEnabled","value":true}}
 ```

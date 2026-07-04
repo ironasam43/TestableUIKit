@@ -8,7 +8,7 @@ LOG_DIR="/tmp/tuk_e2e_$(date +%Y%m%d_%H%M%S)"
 mkdir -p "$LOG_DIR"
 echo "LOG_DIR: $LOG_DIR"
 
-# ─── 0. 事前クリア ────────────────────────────────────
+# ─── 0. Pre-clear ────────────────────────────────────
 lsof -ti :8888 | xargs kill -9 2>/dev/null || true
 
 # ─── 1. swift build ──────────────────────────────────
@@ -22,13 +22,13 @@ swift test 2>&1 | tee "${LOG_DIR}/test.log"
 grep "Executed.*tests" "${LOG_DIR}/test.log" | tail -1
 echo "TEST_OK"
 
-# ─── 3. MacDemo 起動 ──────────────────────────────────
+# ─── 3. Launch MacDemo ──────────────────────────────────
 echo "[3] swift run TestableUIKitMacDemo (background)"
 swift run TestableUIKitMacDemo > "${LOG_DIR}/macdemo.log" 2>&1 &
 MACDEMO_PID=$!
 echo "PID=$MACDEMO_PID"
 
-# ─── 4. /ping ポーリング ──────────────────────────────
+# ─── 4. Poll /ping ──────────────────────────────────
 echo "[4] polling /ping"
 for i in $(seq 1 30); do
   sleep 1
@@ -40,7 +40,7 @@ for i in $(seq 1 30); do
   [ "$i" -eq 30 ] && { echo "PING_TIMEOUT"; kill $MACDEMO_PID 2>/dev/null; exit 1; }
 done
 
-# ─── 5. getState（登録完了ゲート）───────────────────────
+# ─── 5. getState (registration gate) ───────────────────
 echo "[5] getState scene.demo.counter (registration gate)"
 for i in $(seq 1 20); do
   sleep 1
@@ -106,7 +106,7 @@ PYEOF
 sips -g pixelWidth -g pixelHeight "${LOG_DIR}/screenshot.png"
 echo "screenshot saved: ${LOG_DIR}/screenshot.png"
 
-# ─── 8. クリーンアップ ────────────────────────────────
+# ─── 8. Cleanup ────────────────────────────────────
 echo "[8] cleanup"
 kill $MACDEMO_PID 2>/dev/null || true
 wait $MACDEMO_PID 2>/dev/null || true

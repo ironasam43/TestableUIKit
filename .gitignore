@@ -50,7 +50,7 @@ handoff_1.md
 # Symlink to workspace-root cmflow (breaks on standalone clone)
 docs/cmflow.md
 
-# セッション添付（コミット対象外）
+# Session attachments (not for commit)
 .agent_attachments/
 .venv/
 

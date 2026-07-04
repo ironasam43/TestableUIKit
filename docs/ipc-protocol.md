@@ -2,8 +2,8 @@
 
 ## Overview
 
-TestableUIKit の iOS アプリ ↔ Host PC 間通信は、REST API over HTTP を使用します。  
-アプリ内の `TestableServer` が localhost:8888 でリッスンし、テスト自動化ツールはそこへ HTTP リクエストを送信します。
+TestableUIKit uses a REST API over HTTP for communication between the iOS app and the host PC.  
+The `TestableServer` inside the app listens on localhost:8888, and test automation tools send HTTP requests to it.
 
 ---
 
@@ -11,10 +11,10 @@ TestableUIKit の iOS アプリ ↔ Host PC 間通信は、REST API over HTTP �
 
 ### 1. GET /ping
 
-**目的**: Server 接続確認  
-**リクエスト**: なし
+**Purpose**: Verify server connectivity  
+**Request**: none
 
-**レスポンス**:
+**Response**:
 ```json
 {
   "status": "ok"
@@ -25,20 +25,20 @@ TestableUIKit の iOS アプリ ↔ Host PC 間通信は、REST API over HTTP �
 
 ### 2. POST /perform
 
-**目的**: UI コンポーネント上でコマンドを実行し、状態を取得  
-**リクエスト**:
+**Purpose**: Execute a command on a UI component and retrieve its state  
+**Request**:
 
 ```json
 {
-  "testID": "string",        // UI コンポーネントの一意識別子
-  "commandName": "string",   // 実行するコマンド名
-  "parameters": {}           // コマンド固有のパラメータ（dict or null）
+  "testID": "string",        // Unique identifier for the UI component
+  "commandName": "string",   // Name of the command to execute
+  "parameters": {}           // Command-specific parameters (dict or null)
 }
 ```
 
-**レスポンス** (success):
+**Response** (success):
 
-> **全コマンド共通**: 成功時は常に以下の **5キー固定の describedState** を返します。
+> **All commands**: On success, always returns the following **5-key fixed describedState**.
 
 ```json
 {
@@ -50,7 +50,7 @@ TestableUIKit の iOS アプリ ↔ Host PC 間通信は、REST API over HTTP �
 }
 ```
 
-**レスポンス** (error):
+**Response** (error):
 ```json
 {
   "error": "string"
@@ -61,47 +61,47 @@ TestableUIKit の iOS アプリ ↔ Host PC 間通信は、REST API over HTTP �
 
 ### 3. GET /screenshot
 
-**目的**: アプリ内スクリーンショット取得（Simulator・実機共通）  
-**リクエスト**: なし
+**Purpose**: Capture an in-app screenshot (works on both Simulator and physical device)  
+**Request**: none
 
-**実装**: `TestableServer` に注入された `screenshotProvider` クロージャを呼び出し、
-key window を PNG レンダリングして base64 で返す。
-`screenshotProvider` が未注入の場合は 503 を返す（DemoApp DEBUG ビルドでは常に注入済み）。
+**Implementation**: Calls the `screenshotProvider` closure injected into `TestableServer`,
+renders the key window as PNG, and returns it base64-encoded.
+Returns 503 if `screenshotProvider` is not injected (always injected in DemoApp DEBUG builds).
 
-**レスポンス** (success):
+**Response** (success):
 ```json
 {
-  "image_base64": "<PNG の base64 文字列>",
+  "image_base64": "<base64-encoded PNG string>",
   "format": "png"
 }
 ```
 
-**レスポンス** (error / provider 未設定):
+**Response** (error / provider not configured):
 ```json
 {
   "error": "screenshotProvider not configured"
 }
 ```
 
-**HTTP ステータス**:
-- `200` — PNG データ取得成功
-- `500` — キャプチャ中に例外発生
-- `503` — `screenshotProvider` が未注入
+**HTTP status codes**:
+- `200` — PNG data retrieved successfully
+- `500` — Exception occurred during capture
+- `503` — `screenshotProvider` not injected
 
-**設計上の注意**:
-- UIKit 依存（`UIGraphicsImageRenderer` など）はライブラリ側に持ち込まず、アプリ側（DemoApp）が closure を注入する。
-- MCP `ui_screenshot` は本エンドポイントを一次経路とし、loopback 接続失敗時のみ `simctl io booted screenshot`（Simulator 専用）へフォールバックする。
+**Design notes**:
+- UIKit dependencies (e.g. `UIGraphicsImageRenderer`) are not imported into the library; the app (DemoApp) injects them via a closure.
+- MCP `ui_screenshot` uses this endpoint as the primary route, falling back to `simctl io booted screenshot` (Simulator only) only when the loopback connection fails.
 
 ---
 
-### 4. MCP `ui_runScenario`（宣言的シナリオ実行）
+### 4. MCP `ui_runScenario` (Declarative scenario execution)
 
-**目的**: 複数ステップの UI 操作＋期待値検証を 1 回の MCP 呼び出しで宣言的に実行する。
+**Purpose**: Execute multiple UI operations with expected-value assertions in a single MCP call, declaratively.
 
-**実装場所**: `mcp-swift/`（MCP レイヤーのみ。**新規 HTTP エンドポイントは追加しない**）。
-各ステップは内部的に本ページの `POST /perform` へ順に変換されるだけで、IPC プロトコル自体に変更はない。
+**Implementation location**: `mcp-swift/` (MCP layer only — **no new HTTP endpoints are added**).  
+Each step is internally translated to `POST /perform` calls in order; the IPC protocol itself is unchanged.
 
-**シナリオ形式**:
+**Scenario format**:
 ```json
 {
   "name": "counter-flow",
@@ -116,29 +116,29 @@ key window を PNG レンダリングして base64 で返す。
 }
 ```
 
-- `action` は `POST /perform` の `commandName` にそのまま渡される（getState / tap / setProperty / setEnabled / コンポーネント固有コマンド）。
-- `parameters` は省略可（省略時は `null`）。
-- `expect` は省略可。指定した場合、実行後の describedState と **キー単位**で突合し、一致しないキー・欠落キーは fail として記録する（number は微小誤差許容、それ以外は完全一致）。
-- ステップは先頭から順に実行し、途中で失敗（HTTP 異常・`{"error":...}` 応答）してもシナリオは中断せず次のステップへ進む。
+- `action` is passed directly as `commandName` to `POST /perform` (getState / tap / setProperty / setEnabled / component-specific commands).
+- `parameters` is optional (defaults to `null`).
+- `expect` is optional. When specified, each key is matched against the resulting `describedState`; mismatched or missing keys are recorded as failures (numbers allow a small tolerance; all other types require exact match).
+- Steps execute in order. If a step fails (HTTP error or `{"error":...}` response), the scenario continues to the next step rather than aborting.
 
-**戻り値**: 各ステップの pass/fail・assert 詳細・シナリオ全体の集計（`passCount`/`failCount`）を含む構造化 JSON。詳細は `docs/design.md` §E2 を参照。
+**Return value**: Structured JSON containing the pass/fail result and assert details for each step, plus an overall summary (`passCount`/`failCount`). See `docs/design.md` §E2 for details.
 
 ---
 
 ## testID Naming Convention
 
-`testID` は階層的に命名し、アプリの View 構造を反映させます。
+Use hierarchical names that reflect the app's View structure.
 
-**形式**: `{scene}.{component}[.{subcomponent}]`
+**Format**: `{scene}.{component}[.{subcomponent}]`
 
-**例**:
-- `"scene.auth.loginButton"` — 認証画面の Log In ボタン
-- `"scene.dashboard.userCard.editButton"` — ダッシュボード > ユーザーカード > Edit ボタン
-- `"scene.settings.toggleSwitch"` — 設定画面のトグルスイッチ
+**Examples**:
+- `"scene.auth.loginButton"` — Login button on the auth screen
+- `"scene.dashboard.userCard.editButton"` — Dashboard > UserCard > Edit button
+- `"scene.settings.toggleSwitch"` — Toggle switch on the settings screen
 
-### 実装側での設定
+### Setting up the testID
 
-各 UI コンポーネントは `AnyTestable` protocol に準拠し、`testID` フィールドを定義：
+Each UI component conforms to the `AnyTestable` protocol and defines a `testID` field:
 
 ```swift
 final class LoginButton: ObservableObject, AnyTestable {
@@ -153,8 +153,8 @@ final class LoginButton: ObservableObject, AnyTestable {
 
 ### getState
 
-**目的**: コンポーネントの現在の状態をスナップショット取得（副作用なし）  
-**パラメータ**: なし
+**Purpose**: Snapshot the component's current state (no side effects)  
+**Parameters**: none
 
 **Response schema**:
 ```json
@@ -167,7 +167,7 @@ final class LoginButton: ObservableObject, AnyTestable {
 }
 ```
 
-**実装例**:
+**Example implementation**:
 ```swift
 case "getState":
   return describedState
@@ -177,12 +177,12 @@ case "getState":
 
 ### tap
 
-**目的**: ボタン等のタップアクション実行  
-**パラメータ**: なし
+**Purpose**: Execute a tap action on a button or similar component  
+**Parameters**: none
 
-**意味論（S2 確定版）**:
-- `isEnabled == false` の場合は **no-op**（実ユーザー同様に弾く）
-- 有効時: `isEnabled = false`（二重送信防止）、`title = "Logged In"`（ログイン遷移の結果）
+**Semantics (S2 finalized)**:
+- If `isEnabled == false`, the command is a **no-op** (mirrors real-user behavior)
+- When enabled: set `isEnabled = false` (prevent double-submit) and `title = "Logged In"` (simulates a login transition)
 
 **Response schema**:
 ```json
@@ -195,7 +195,7 @@ case "getState":
 }
 ```
 
-**実装例** (LoginButton):
+**Example implementation** (LoginButton):
 ```swift
 case "tap":
   var state = _state
@@ -204,7 +204,7 @@ case "tap":
   return describedState
 ```
 
-**tap レスポンス例**（有効時）:
+**tap response example** (when enabled):
 ```json
 {
   "isEnabled": false,
@@ -215,7 +215,7 @@ case "tap":
 }
 ```
 
-**tap レスポンス例**（無効時 / no-op）:
+**tap response example** (when disabled / no-op):
 ```json
 {
   "isEnabled": false,
@@ -230,18 +230,18 @@ case "tap":
 
 ### setProperty
 
-**目的**: プロパティ値を設定  
-**パラメータ**: `{"key": "string", "value": <value>}`
+**Purpose**: Set a property value  
+**Parameters**: `{"key": "string", "value": <value>}`
 
-**サポートキー（LoginButton）**:
+**Supported keys (LoginButton)**:
 
-| key | 型 | 説明 |
+| key | Type | Description |
 |---|---|---|
-| `isEnabled` | bool | 有効/無効 |
-| `title` | string | ボタンラベル |
-| `isHidden` | bool | 表示/非表示 |
-| `alpha` | double | 透明度（0.0〜1.0） |
-| `backgroundColor` | string | 背景色名（例: "systemBlue"） |
+| `isEnabled` | bool | enable/disable |
+| `title` | string | Button label |
+| `isHidden` | bool | show/hide |
+| `alpha` | double | Opacity (0.0–1.0) |
+| `backgroundColor` | string | Background color name (e.g. "systemBlue") |
 
 **Response schema**:
 ```json
@@ -254,7 +254,7 @@ case "tap":
 }
 ```
 
-**実装例**:
+**Example implementation**:
 ```swift
 case "setProperty":
   var state = _state
@@ -267,8 +267,8 @@ case "setProperty":
 
 ### setEnabled
 
-**目的**: isEnabled を直接設定（bool パラメータ）  
-**パラメータ**: `true` または `false`（JSONValue.bool）
+**Purpose**: Directly set isEnabled (bool parameter)  
+**Parameters**: `true` or `false` (JSONValue.bool)
 
 **Response schema**:
 ```json
@@ -281,7 +281,7 @@ case "setProperty":
 }
 ```
 
-**実装例**:
+**Example implementation**:
 ```swift
 case "setEnabled":
   var state = _state
@@ -294,25 +294,25 @@ case "setEnabled":
 
 ## Component-Specific Commands
 
-以下のコマンドはコンポーネント固有の操作を実行します。実装は各コンポーネント側（Counter / OnOffSwitch など）で定義されます。
+These commands perform component-specific operations. Each component (Counter, OnOffSwitch, etc.) provides its own implementation.
 
 ### increment
 
-**目的**: 数値カウンターを増加させる（Counter など）  
-**パラメータ**: なし  
-**前提**: コンポーネントが `isEnabled == true` の場合のみ動作。無効時は no-op
+**Purpose**: Increment a numeric counter (e.g. Counter)  
+**Parameters**: none  
+**Precondition**: Only operates when `isEnabled == true`; no-op when disabled
 
 **Response schema**:
 ```json
 {
   "count": <number>,
-  // その他、コンポーネントが提供する descriptedState キー
+  // Other describedState keys provided by the component
   "isEnabled": <bool>,
   ...
 }
 ```
 
-**実装例** (Counter):
+**Example implementation** (Counter):
 ```swift
 case "increment":
   var state = _state
@@ -325,21 +325,21 @@ case "increment":
 
 ### decrement
 
-**目的**: 数値カウンターを減少させる（Counter など）  
-**パラメータ**: なし  
-**前提**: コンポーネントが `isEnabled == true` の場合のみ動作。無効時は no-op
+**Purpose**: Decrement a numeric counter (e.g. Counter)  
+**Parameters**: none  
+**Precondition**: Only operates when `isEnabled == true`; no-op when disabled
 
 **Response schema**:
 ```json
 {
   "count": <number>,
-  // その他、コンポーネントが提供する descriptedState キー
+  // Other describedState keys provided by the component
   "isEnabled": <bool>,
   ...
 }
 ```
 
-**実装例** (Counter):
+**Example implementation** (Counter):
 ```swift
 case "decrement":
   var state = _state
@@ -352,19 +352,19 @@ case "decrement":
 
 ### reset
 
-**目的**: コンポーネントを初期状態にリセットする（Counter, Slider など）  
-**パラメータ**: なし
+**Purpose**: Reset the component (e.g. Counter) to its initial state  
+**Parameters**: none
 
 **Response schema**:
 ```json
 {
-  "count": 0,  // or 初期値
+  "count": 0,  // or initial value
   "isEnabled": <bool>,
   ...
 }
 ```
 
-**実装例** (Counter):
+**Example implementation** (Counter):
 ```swift
 case "reset":
   var state = _state
@@ -377,8 +377,8 @@ case "reset":
 
 ### toggle
 
-**目的**: On/Off スイッチの状態を反転する（OnOffSwitch など）  
-**パラメータ**: なし
+**Purpose**: Toggle an On/Off switch state (e.g. OnOffSwitch)  
+**Parameters**: none
 
 **Response schema**:
 ```json
@@ -389,7 +389,7 @@ case "reset":
 }
 ```
 
-**実装例** (OnOffSwitch):
+**Example implementation** (OnOffSwitch):
 ```swift
 case "toggle":
   var state = _state
@@ -402,8 +402,8 @@ case "toggle":
 
 ### clear
 
-**目的**: テキスト入力フィールドなどをクリアする（TextInput など）  
-**パラメータ**: なし
+**Purpose**: Clear a text input field (e.g. TextInput)  
+**Parameters**: none
 
 **Response schema**:
 ```json
@@ -414,7 +414,7 @@ case "toggle":
 }
 ```
 
-**実装例** (TextInput):
+**Example implementation** (TextInput):
 ```swift
 case "clear":
   var state = _state
@@ -427,7 +427,7 @@ case "clear":
 
 ## Wire Format (JSON Coding)
 
-すべての値は `JSONValue` enum に統合：
+All values are unified under the `JSONValue` enum:
 
 ```swift
 public enum JSONValue: Codable {
@@ -440,7 +440,7 @@ public enum JSONValue: Codable {
 }
 ```
 
-**リクエスト例（tap コマンド）**:
+**Request example (tap command)**:
 ```python
 {
   "testID": "scene.auth.loginButton",
@@ -449,7 +449,7 @@ public enum JSONValue: Codable {
 }
 ```
 
-**リクエスト例（setProperty コマンド）**:
+**Request example (setProperty command)**:
 ```python
 {
   "testID": "scene.auth.loginButton",
@@ -465,7 +465,7 @@ public enum JSONValue: Codable {
 
 ## describedState Format
 
-各 `AnyTestable` 実装は `describedState` を返す際、以下の構造を使用：
+Each `AnyTestable` implementation returns `describedState` in the following structure:
 
 ```swift
 var describedState: [String: JSONValue] {
@@ -473,7 +473,7 @@ var describedState: [String: JSONValue] {
 }
 ```
 
-LoginButton（CLI・SwiftUI 共通）の describedState は **5キー固定**：
+The `describedState` for LoginButton (shared between CLI and SwiftUI) has **5 fixed keys**:
 
 ```json
 {
@@ -489,7 +489,7 @@ LoginButton（CLI・SwiftUI 共通）の describedState は **5キー固定**：
 
 ## Error Handling
 
-`TestableServer` 側でエラーが発生した場合：
+When an error occurs in `TestableServer`:
 
 ```swift
 throw TestError.unknownCommand(commandName)
@@ -497,7 +497,7 @@ throw TestError.componentNotFound(testID)
 throw TestError.invalidParameters
 ```
 
-リクエスター側は HTTP 200 OK で以下を受け取る：
+The requester receives HTTP 200 OK with:
 
 ```json
 {
@@ -507,37 +507,37 @@ throw TestError.invalidParameters
 
 ---
 
-## Test Phases（自動テスト検証フェーズ）
+## Test Phases
 
-TestableUIKit の検証は以下の3段階フェーズで実施：
+TestableUIKit verification is performed in three phases:
 
 ### Phase A: Network Connectivity
-**目的**: Simulator → Host (localhost:8888) の通信確認  
-**実行**: `GET /ping`  
-**期待**: `{"status": "ok"}`
+**Purpose**: Verify communication from Simulator to Host (localhost:8888)  
+**Execution**: `GET /ping`  
+**Expected**: `{"status": "ok"}`
 
 ### Phase B: Logic Verification (UI State Change)
-**目的**: UI コンポーネントの状態変化を実証  
-**手順**:
-1. `/perform` で `getState` コマンド → 初期状態を取得（`isEnabled: true, title: "Log In"`）
-2. `/perform` で `tap` コマンド → ログイン遷移を実行
-3. `/perform` で `getState` コマンド → 最終状態を取得し、変化を確認
+**Purpose**: Demonstrate UI component state changes  
+**Steps**:
+1. `/perform` with `getState` command — retrieve initial state (`isEnabled: true, title: "Log In"`)
+2. `/perform` with `tap` command — execute the login transition
+3. `/perform` with `getState` command — retrieve final state and verify the change
 
-**期待**: 以下の状態遷移が確認される
+**Expected**: The following state transition is confirmed:
 - `isEnabled: true → false`
 - `title: "Log In" → "Logged In"`
 
-**Phase B 実証の意義**: IPC tap → `@Published` 変化（`title` の変化が再描画の証拠）→ SwiftUI 再描画 の全経路を 1 本で通す。
+**Significance of Phase B**: Exercises the full path — IPC tap → `@Published` change (`title` change proves re-render) → SwiftUI re-render — in a single pass.
 
 ### Phase B-5: Bidirectional Recovery
-**目的**: UI 状態の双方向制御と復帰可能性を実証  
-**手順**:
-1. `/perform` で `tap` コマンド実行後、`isEnabled: false` 状態を確認
-2. `/perform` で `setEnabled(true)` コマンド → 状態を初期値に復帰
-3. `/perform` で `getState` コマンド → 復帰状態を確認（`isEnabled → true`）
+**Purpose**: Demonstrate bidirectional UI state control and recoverability  
+**Steps**:
+1. Execute `tap` via `/perform` and confirm `isEnabled: false` state
+2. Execute `setEnabled(true)` via `/perform` — restore state to initial value
+3. Execute `getState` via `/perform` — confirm the recovered state (`isEnabled → true`)
 
-**期待**: `isEnabled: false → true` の状態復帰が確認される  
-**意義**: テストの再現性・リセット可能性を保証する
+**Expected**: State recovery `isEnabled: false → true` is confirmed  
+**Significance**: Ensures test reproducibility and state resetability
 
 ---
 
@@ -551,8 +551,7 @@ TestableUIKit の検証は以下の3段階フェーズで実施：
 - [x] Phase A (Network) verification
 - [x] Phase B (State Change) verification
 - [x] Phase B-5 (Bidirectional Recovery) verification
-- [x] setProperty command (getState/tap/setProperty/setEnabled 統一 I/F、5キー describedState)
-- [x] tap semantics finalized (S2: guard isEnabled / isEnabled=false / title="Logged In"、5キー固定維持)
-- [x] 全コマンド共通 Response schema 明文化（describedState 5キー固定）
+- [x] setProperty command (getState/tap/setProperty/setEnabled unified interface, 5-key describedState)
+- [x] tap semantics finalized (S2: guard isEnabled / isEnabled=false / title="Logged In", 5-key fixed maintained)
+- [x] All-commands common Response schema documented (5-key fixed describedState)
 - [x] Integration with CI/CD via pytest (STEP 1)
-

@@ -1,8 +1,8 @@
 import Foundation
 
-// MARK: - 共有状態 struct
+// MARK: - Shared State Struct
 
-/// OnOffSwitch の状態を保持する純粋な値型（SwiftUI View 用）
+/// Pure value type holding OnOffSwitch state (for use with SwiftUI Views)
 public struct OnOffSwitchState {
   public var isOn: Bool = false
   public var label: String = "Switch"
@@ -11,9 +11,9 @@ public struct OnOffSwitchState {
   public init() {}
 }
 
-// MARK: - 純粋コマンド処理関数
+// MARK: - Pure Command Processing Functions
 
-/// 3キー describedState を生成する純粋関数
+/// Pure function that produces a 3-key describedState
 public func makeOnOffSwitchDescribedState(_ state: OnOffSwitchState) -> [String: JSONValue] {
   [
     "isOn": .bool(state.isOn),
@@ -22,15 +22,15 @@ public func makeOnOffSwitchDescribedState(_ state: OnOffSwitchState) -> [String:
   ]
 }
 
-/// toggle コマンド処理
-/// - 意味論: isEnabled == false なら no-op。有効時は isOn を反転する。
+/// Handles the toggle command
+/// - Semantics: no-op when isEnabled == false; toggles isOn when enabled
 public func applyOnOffSwitchToggle(to state: inout OnOffSwitchState) {
   guard state.isEnabled else { return }
   state.isOn.toggle()
 }
 
-/// setProperty コマンド処理（parameters: {"key": string, "value": <value>}）
-/// サポートキー: isOn（bool）/ label（string）/ isEnabled（bool）
+/// Handles the setProperty command (parameters: {"key": string, "value": <value>})
+/// Supported keys: isOn (bool) / label (string) / isEnabled (bool)
 public func applyOnOffSwitchSetProperty(
   to state: inout OnOffSwitchState,
   parameters: JSONValue

@@ -1,27 +1,29 @@
+English | [日本語](README.ja.md)
+
 # TestableUIKit
 
-iOS/macOS 向けの UIコンポーネント自己申告型テストフレームワーク。
+A self-reporting UI component testing framework for iOS/macOS.
 
-**差別化：** Swift 型システムと AI（MCP: Model Context Protocol）が融合した、コンポーネント自己申告型テストフレームワーク。UI コンポーネントが `testID`・状態・実行可能コマンドを自己申告し、AI エージェントが MCP 経由で実行中の UI を直接操作・検証できる。
+**What makes it unique:** A component self-reporting testing framework that fuses the Swift type system with AI (MCP: Model Context Protocol). UI components self-report their `testID`, state, and executable commands, enabling AI agents to directly drive and verify a running UI via MCP.
 
-> 🚀 **はじめての方へ**: 自作コンポーネントを 5 分で計装する手順は
-> [`docs/getting-started.md`](docs/getting-started.md) を参照してください。
-> 最小の動くサンプルは [`Example/`](Example/README.md)、困ったときは
-> [`docs/troubleshooting.md`](docs/troubleshooting.md) にまとまっています。
+> 🚀 **New here?** For a step-by-step guide to instrumenting your own component in 5 minutes, see
+> [`docs/getting-started.md`](docs/getting-started.md).
+> The minimal working sample is in [`Example/`](Example/README.md), and common issues are covered in
+> [`docs/troubleshooting.md`](docs/troubleshooting.md).
 
 ---
 
-## AI エージェントによる自動操作（MCP）
+## AI-Driven Automation (MCP)
 
-TestableUIKit は [MCP（Model Context Protocol）](https://modelcontextprotocol.io/) サーバー（[`mcp-swift/`](mcp-swift/)）を同梱しており、Claude などの AI エージェントが Claude Desktop / Claude Code から stdio 経由で接続し、実行中の UI を直接操作・検証できます。**探索的な AI 駆動**と**決定的な宣言的シナリオ**の二つのアプローチを両輪で提供します。
+TestableUIKit ships with an [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server ([`mcp-swift/`](mcp-swift/)). AI agents such as Claude can connect from Claude Desktop / Claude Code via stdio to directly drive and verify a running UI. The framework supports two complementary approaches: **exploratory AI-driven** interaction and **deterministic declarative scenarios**.
 
-### 1. AI 動的シナリオ（探索的）
+### 1. AI Dynamic Scenarios (Exploratory)
 
-AI エージェントが `ui_getState` で現在の状態を取得 → 自ら判断 → `ui_perform` でコマンド実行 → `ui_screenshot` で見た目を確認、というサイクルを都度の判断で連鎖させながら UI を探索的に操作・検証します。仕様が固まっていない画面の探索や、想定外の挙動の調査に向いています。
+The AI agent retrieves the current state with `ui_getState`, makes its own decision, executes a command with `ui_perform`, and confirms the result visually with `ui_screenshot` — chaining this cycle with fresh judgment each time. This is well-suited for exploring screens whose spec is still evolving or investigating unexpected behavior.
 
-### 2. 宣言的シナリオ（`ui_runScenario`・決定的）
+### 2. Declarative Scenarios (`ui_runScenario` — Deterministic)
 
-操作列と期待値をあらかじめ JSON で定義しておき、1 回の MCP 呼び出しで先頭から順に実行し、各ステップの `describedState` を `expect` と突合して pass/fail を判定します。AI の都度判断を介さず決定的に実行できるため、回帰確認に向いています。
+Define a sequence of actions and expected values in JSON ahead of time. A single MCP call executes them in order from the first step, matching each step's `describedState` against `expect` to determine pass/fail. Because it runs deterministically without ad-hoc AI judgment, this approach is ideal for regression checks.
 
 ```json
 {
@@ -33,44 +35,44 @@ AI エージェントが `ui_getState` で現在の状態を取得 → 自ら判
 }
 ```
 
-動作するサンプルは [`Example/scenarios/`](Example/scenarios/) を参照。シナリオ JSON の書き方やアクションカタログ詳細は [`docs/scenario-authoring.md`](docs/scenario-authoring.md) を参照してください。
+For working samples, see [`Example/scenarios/`](Example/scenarios/). For the scenario JSON format and full action catalog, see [`docs/scenario-authoring.md`](docs/scenario-authoring.md).
 
-### MCP ツール一覧（5 本）
+### MCP Tools (5 total)
 
-| ツール | ラップ先 | 用途 |
+| Tool | Wraps | Purpose |
 |---|---|---|
-| `ui_ping` | `GET /ping` | サーバー死活確認 |
-| `ui_getState(testID)` | `POST /perform` getState | 状態取得 |
-| `ui_perform(testID, command, params)` | `POST /perform` | コマンド実行（tap / setProperty / setEnabled など） |
-| `ui_screenshot` | `GET /screenshot`（simctl フォールバック） | スクリーンショット取得 |
-| `ui_runScenario(scenario)` | `POST /perform` を複数ステップぶん順送り | 宣言的 JSON シナリオの実行・assert 判定 |
+| `ui_ping` | `GET /ping` | Server health check |
+| `ui_getState(testID)` | `POST /perform` getState | Retrieve component state |
+| `ui_perform(testID, command, params)` | `POST /perform` | Execute a command (tap / setProperty / setEnabled, etc.) |
+| `ui_screenshot` | `GET /screenshot` (simctl fallback) | Capture a screenshot |
+| `ui_runScenario(scenario)` | `POST /perform` forwarded for each step | Run a declarative JSON scenario and evaluate assertions |
 
-### 起動方法
+### Starting the MCP Server
 
 ```bash
 cd mcp-swift
 swift run TestableUIKitMCP
 ```
 
-Claude Desktop / Claude Code などの MCP クライアント設定に stdio サーバーとして登録してください。プロトコル詳細は [`docs/ipc-protocol.md`](docs/ipc-protocol.md)・[`docs/design.md`](docs/design.md) §E を参照。
+Register it as a stdio server in your MCP client configuration (Claude Desktop / Claude Code, etc.). For protocol details, see [`docs/ipc-protocol.md`](docs/ipc-protocol.md) and [`docs/design.md`](docs/design.md) §E.
 
 ---
 
-## 計装の 3 段階（API Tiers）
+## 3 Instrumentation Tiers (API Tiers)
 
-抽象度の異なる 3 段階の API があります。**まず上から検討**し、合わなければ下に降りてください。
+There are three API tiers at different levels of abstraction. **Start from the top** and move down only if the higher tier does not fit your needs.
 
-| Tier | API | 向いている対象 | 必要な部品 |
+| Tier | API | Best for | What you need |
 |---|---|---|---|
-| **Tier 2** | `TestableToggle` / `TestableTextField` / `TestableStepper` / `TestableSlider` / `TestableButton` | 標準 SwiftUI コントロール | View を差し替えるだけ |
-| **Tier 1** | `TestableComponent<State>` | 自作コンポーネント（state 値型を持つ） | state 値型 ＋ `properties` / `commands` の宣言（手書き `perform` 不要） |
-| **Tier 0** | `AnyTestable` 手書き準拠 | 特殊計装（ロック制御・cross-process 等） | `testID` / `describedState` / `perform` を自前実装 |
+| **Tier 2** | `TestableToggle` / `TestableTextField` / `TestableStepper` / `TestableSlider` / `TestableButton` | Standard SwiftUI controls | Just swap in the replacement view |
+| **Tier 1** | `TestableComponent<State>` | Custom components (with a state value type) | Declare the state value type + `properties` / `commands` (no hand-written `perform` needed) |
+| **Tier 0** | Manual `AnyTestable` conformance | Special instrumentation (lock control, cross-process, etc.) | Implement `testID` / `describedState` / `perform` yourself |
 
 ```swift
-// Tier 2: 標準コントロールは View を差し替えるだけ
-TestableToggle("通知", isOn: $isOn, id: "settings.toggle")
+// Tier 2: Standard controls — just swap in the replacement view
+TestableToggle("Notifications", isOn: $isOn, id: "settings.toggle")
 
-// Tier 1: 自作 state は TestableComponent を宣言するだけ（ブリッジ class 不要）
+// Tier 1: Custom state — just declare TestableComponent (no bridge class needed)
 TestableComponent<MyToggleState>(
   id: "example.my.toggle",
   state: MyToggleState(),
@@ -79,48 +81,48 @@ TestableComponent<MyToggleState>(
 )
 ```
 
-詳しい使い分けは [`docs/getting-started.md`](docs/getting-started.md) の「3 つの API 段階」を参照してください。
+For a detailed guide on choosing the right tier, see the "3 API Tiers" section in [`docs/getting-started.md`](docs/getting-started.md).
 
 ---
 
-## ドキュメント
+## Documentation
 
-| ドキュメント | 内容 |
+| Document | Contents |
 |---|---|
-| [`docs/getting-started.md`](docs/getting-started.md) | 5 分で自作コンポーネントを計装する手順 |
-| [`Example/`](Example/README.md) | 自分のコンポーネントをテストする最小サンプル |
-| [`docs/ipc-protocol.md`](docs/ipc-protocol.md) | IPC プロトコル仕様 |
-| [`docs/troubleshooting.md`](docs/troubleshooting.md) | トラブルシューティング |
-| [`SETUP.md`](SETUP.md) | Xcode セットアップ手順（実機含む） |
-| [`docs/design.md`](docs/design.md) | 設計・アーキテクチャ |
+| [`docs/getting-started.md`](docs/getting-started.md) | Instrument your own component in 5 minutes |
+| [`Example/`](Example/README.md) | Minimal sample for testing your own component |
+| [`docs/ipc-protocol.md`](docs/ipc-protocol.md) | IPC protocol specification |
+| [`docs/troubleshooting.md`](docs/troubleshooting.md) | Troubleshooting guide |
+| [`SETUP.md`](SETUP.md) | Xcode setup instructions (including physical devices) |
+| [`docs/design.md`](docs/design.md) | Design and architecture |
 
 ---
 
-## プロジェクト構成
+## Project Structure
 
 ```
 TestableUIKit/
-├── Sources/TestableUIKit/          # Swift Library（コア実装）
-│   ├── JSONValue.swift             # JSON値の型定義（Codable）
+├── Sources/TestableUIKit/          # Swift Library (core implementation)
+│   ├── JSONValue.swift             # JSON value type definitions (Codable)
 │   ├── AnyTestable.swift           # @MainActor protocol
 │   └── TestableServer.swift        # Registry + HTTP handler
-├── Package.swift                   # Swift Package 定義
-├── run_test.py                     # Python テストランナー（Phase A/B）
-├── DemoApp-iOS-template.swift      # iOS App テンプレート（SwiftUI）
-├── LoginButton-iOS-template.swift  # UIButton実装テンプレート
-├── SETUP.md                        # Xcode セットアップ手順
-└── README.md                       # このファイル
+├── Package.swift                   # Swift Package definition
+├── run_test.py                     # Python test runner (Phase A/B)
+├── DemoApp-iOS-template.swift      # iOS App template (SwiftUI)
+├── LoginButton-iOS-template.swift  # UIButton implementation template
+├── SETUP.md                        # Xcode setup instructions
+└── README.md                       # This file
 ```
 
 ---
 
-## アーキテクチャ
+## Architecture
 
-### 層構成
+### Layer Overview
 
 ```
 ┌────────────────────────────────────────────────┐
-│ iOS Simulator / 実機（DemoApp）                 │
+│ iOS Simulator / Device (DemoApp)                │
 │ ┌──────────────────────────────────────────┐  │
 │ │ LoginButton (AnyTestable)                 │  │
 │ │ - testID: "auth.loginButton"              │  │
@@ -143,24 +145,24 @@ TestableUIKit/
       /ping    /perform
           ↓        ↑
 ┌────────────────────────────────────────────────┐
-│ Python Test Runner（run_test.py）              │
+│ Python Test Runner (run_test.py)               │
 │ - Phase A: curl GET /ping                      │
 │ - Phase B: curl POST /perform (tap command)   │
 │ - Assert: response JSON contains expected state│
 └────────────────────────────────────────────────┘
 ```
 
-### データフロー
+### Data Flow
 
-1. **iOS App 起動**：DemoApp が TestableServer.start() を呼び出し
-2. **Registry に登録**：LoginButton が TestableRegistry に自動登録
-3. **テスト実行**：Python スクリプトが HTTP POST で commands を送信
-4. **状態取得**：perform() が実行され、describedState が JSON で返却
-5. **検証**：Python がレスポンス JSON をアサート
+1. **iOS App launches**: DemoApp calls `TestableServer.start()`
+2. **Registration**: `LoginButton` registers itself with `TestableRegistry`
+3. **Test execution**: The Python script sends commands via HTTP POST
+4. **State retrieval**: `perform()` executes and returns `describedState` as JSON
+5. **Assertion**: Python asserts against the response JSON
 
 ---
 
-## コンポーネント仕様
+## Component Specification
 
 ### AnyTestable protocol
 
@@ -173,14 +175,14 @@ protocol AnyTestable: AnyObject {
 }
 ```
 
-**責務**：
-- `testID`：一意識別子（e.g., "auth.loginButton"）
-- `describedState`：現在の論理状態（JSON compatible）
-- `perform()`：コマンド実行→新状態を返す
+**Responsibilities**:
+- `testID`: Unique identifier (e.g., `"auth.loginButton"`)
+- `describedState`: Current logical state (JSON compatible)
+- `perform()`: Execute a command and return the new state
 
 ### JSONValue enum
 
-6ケースのプリミティブ値（JSON 互換）：
+6-case primitive value type (JSON compatible):
 
 ```swift
 enum JSONValue: Codable, Hashable, Sendable {
@@ -193,13 +195,13 @@ enum JSONValue: Codable, Hashable, Sendable {
 }
 ```
 
-拡張メソッド：
-- `.toJSON: Any`：JSON シリアライゼーション
-- `.asBool`, `.asString`, `.asInt`, `.asDouble`, `.asObject`：型キャスト
+Extension methods:
+- `.toJSON: Any`: JSON serialization
+- `.asBool`, `.asString`, `.asInt`, `.asDouble`, `.asObject`: Type casting
 
 ### LoginButton: UIButton
 
-テスト対象コンポーネント：
+Example test target component:
 
 ```swift
 class LoginButton: UIButton, AnyTestable {
@@ -221,24 +223,24 @@ class LoginButton: UIButton, AnyTestable {
 
 ---
 
-## 使用方法
+## Usage
 
-### セットアップ（初回のみ）
+### Setup (first time only)
 
-**前提条件**:
+**Prerequisites**:
 - Xcode 15+
-- xcodegen 2.45.3+ （インストール: `brew install xcodegen`）
+- xcodegen 2.45.3+ (install: `brew install xcodegen`)
 - Python 3.8+
 
-**手順**:
+**Steps**:
 
-1. **project.yml から xcodeproj を生成**：
+1. **Generate the xcodeproj from project.yml**:
    ```bash
-   cd TestableUIKit  # リポジトリのルート
+   cd TestableUIKit  # repository root
    xcodegen generate
    ```
 
-2. **Simulator で実行**：
+2. **Build for Simulator**:
    ```bash
    xcodebuild \
      -project TestableUIKitDemo.xcodeproj \
@@ -247,24 +249,24 @@ class LoginButton: UIButton, AnyTestable {
      build
    ```
 
-   または Xcode GUI：
+   Or via Xcode GUI:
    ```
    Xcode > Product > Run
    ```
 
-**注意**：
-- `TestableUIKitDemo.xcodeproj/` は `.gitignore` で除外されています（自動生成物）
-- `project.yml` が真実のソース。修正がある場合は `project.yml` を編集後 `xcodegen generate` を実行してください
+**Notes**:
+- `TestableUIKitDemo.xcodeproj/` is excluded by `.gitignore` (auto-generated artifact)
+- `project.yml` is the source of truth. If changes are needed, edit `project.yml` and re-run `xcodegen generate`
 
-### テスト実行
+### Running Tests
 
 ```bash
-# 別ターミナルで
-cd TestableUIKit  # リポジトリのルート
+# In a separate terminal
+cd TestableUIKit  # repository root
 python3 run_test.py
 ```
 
-**出力例**：
+**Example output**:
 
 ```
 [PHASE A] Network Path Verification
@@ -279,30 +281,30 @@ python3 run_test.py
 All tests completed successfully!
 ```
 
-### 実機（LAN 越し）での実行
+### Running on a Physical Device (over LAN)
 
-Simulator ではなく実機の iPhone / iPad でテストを実行する場合：
+To run tests on a physical iPhone / iPad instead of the Simulator:
 
 ```bash
-# 実機の IP アドレスを指定してテスト実行
-TESTABLE_IPC_HOST=<実機IP> python3 run_test.py
+# Specify the device's IP address
+TESTABLE_IPC_HOST=<device-IP> python3 run_test.py
 ```
 
-**例**（実機の IP が `192.168.0.181` の場合）：
+**Example** (if the device IP is `192.168.0.181`):
 ```bash
 TESTABLE_IPC_HOST=192.168.0.181 python3 run_test.py
 ```
 
-詳細は **[SETUP.md のステップ 7](./SETUP.md#ステップ-7実機lan-越しでの実行)** を参照してください（IP 確認方法・ファイアウォール設定・トラブルシューティングを記載）。
+For details (how to find the IP, firewall settings, troubleshooting), see **[SETUP.md Step 7](./SETUP.md#ステップ-7実機lan-越しでの実行)**.
 
 ---
 
-## 技術スタック
+## Technology Stack
 
-| レイヤー | 技術 | バージョン |
+| Layer | Technology | Version |
 |---|---|---|
 | **Swift Runtime** | Swift 5.9+ | iOS 15+ |
-| **HTTP Framework** | 標準ライブラリ（URLSession） | — |
+| **HTTP Framework** | Standard Library (URLSession) | — |
 | **Async/Await** | Swift Concurrency | — |
 | **Build Tool** | xcodegen | 2.45.3+ |
 | **Package Manager** | SPM | — |
@@ -311,60 +313,59 @@ TESTABLE_IPC_HOST=192.168.0.181 python3 run_test.py
 
 ---
 
-## 次のフェーズ（バックログ）
+## Roadmap (Backlog)
 
-- [ ] Contract（仕様）の追加：Invariant + Transition
-- [ ] スクリーンショット + 変化分析
-- [ ] AI テスト生成（GPT-4 / Claude）
-- [x] 実機対応（Wi-Fi 越し LAN 通信）✅
-- [ ] CI/CD 統合（GitHub Actions）
+- [ ] Add Contract spec: Invariant + Transition
+- [ ] Screenshot + diff analysis
+- [ ] AI test generation (GPT-4 / Claude)
+- [x] Physical device support (Wi-Fi LAN) ✅
+- [ ] CI/CD integration (GitHub Actions)
 
 ---
 
 ## Troubleshooting
 
-トラブルシューティングは [`docs/troubleshooting.md`](docs/troubleshooting.md) に独立化しました。
-サーバ起動・接続、ポート 8888 競合、Registry 共有もれ、実機（LAN 越し）、Python ランナーなどの
-対処を網羅しています。
+Troubleshooting has been moved to [`docs/troubleshooting.md`](docs/troubleshooting.md).
+It covers server startup/connection issues, port 8888 conflicts, Registry registration misses, physical device (LAN) setup, and the Python test runner.
 
 ---
 
-## バージョニング方針（semver）
+## Versioning Policy (semver)
 
-本ライブラリは [Semantic Versioning](https://semver.org/lang/ja/) に従ってタグを付与する。
-利用側は `.package(url: "https://github.com/ironasam43/TestableUIKit", from: "0.1.0")` のように
-バージョン固定できる。
+This library follows [Semantic Versioning](https://semver.org/) for its tags.
+Consumers can pin a version like:
+`.package(url: "https://github.com/ironasam43/TestableUIKit", from: "0.1.0")`
 
-### pre-1.0（現在）の運用ルール
+### pre-1.0 Rules (current)
 
-公開 API は安定化前（`0.x`）であり、**破壊的変更を許容する段階**にある。
-`0.x` 系では semver の慣例に従い、以下の粒度でタグを切る:
+The public API is pre-stabilization (`0.x`) — **breaking changes are permitted at this stage**.
+Under `0.x`, tags follow semver convention at this granularity:
 
-| 変更種別 | 上げる桁 | 例 |
+| Change type | Bump | Example |
 |---|---|---|
-| 破壊的変更（公開 API のシグネチャ変更・削除） | MINOR | `0.1.0` → `0.2.0` |
-| 後方互換な機能追加・バグ修正 | PATCH | `0.1.0` → `0.1.1` |
+| Breaking changes (public API signature change/removal) | MINOR | `0.1.0` → `0.2.0` |
+| Backward-compatible feature additions / bug fixes | PATCH | `0.1.0` → `0.1.1` |
 
-> `0.x` では MINOR が「破壊的変更」を、PATCH が「互換変更」を表す（1.0 到達後の MAJOR/MINOR に相当）。
+> Under `0.x`, MINOR represents breaking changes and PATCH represents compatible changes (equivalent to MAJOR/MINOR after 1.0).
 
-### タグを切るタイミング
+### When to Cut a Tag
 
-- 公開 API（`TestableUIKit` ライブラリの export シンボル）に変更が入り、利用側に配布したい節目で annotated tag を切る。
-- 内部実装のみの変更（テスト・ドキュメント・Demo アプリ）はタグ不要。
-- タグは `git tag -a vX.Y.Z -m "..."` で annotated tag として作成し、`git push origin vX.Y.Z` で remote へ反映する。
+- Cut an annotated tag at milestones where changes to the public API (exported symbols of the `TestableUIKit` library) are ready to distribute to consumers.
+- Changes to internals only (tests, docs, Demo app) do not require a tag.
+- Create tags with `git tag -a vX.Y.Z -m "..."` and push with `git push origin vX.Y.Z`.
 
-### 1.0 到達条件（将来）
+### Conditions to reach 1.0 (future)
 
-公開 API（IPC プロトコル・`AnyTestable` protocol・MCP tool 群）が安定し、破壊的変更を避ける段階に入ったら `v1.0.0` を切る。
-
----
-
-## ライセンス
-
-このプロジェクトは **MIT ライセンス** のもとで公開されています。詳細は [LICENSE](LICENSE) を参照してください。
+Once the public API (IPC protocol, `AnyTestable` protocol, MCP tools) is stable and the project enters a phase where breaking changes are avoided, cut `v1.0.0`.
 
 ---
 
-## サポート
+## License
 
-問題や質問がある場合は、[GitHub Issues](https://github.com/ironasam43/TestableUIKit/issues) で報告してください。
+This project is released under the **MIT License**. See [LICENSE](LICENSE) for details.
+
+---
+
+## Support
+
+For issues or questions, please report them on [GitHub Issues](https://github.com/ironasam43/TestableUIKit/issues).

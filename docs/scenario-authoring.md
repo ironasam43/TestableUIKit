@@ -1,10 +1,10 @@
-# シナリオ・オーサリングガイド
+# Scenario Authoring Guide
 
-宣言的 UI シナリオ（`ui_runScenario`）を JSON で記述するためのリファレンスドキュメント。
+Reference documentation for writing declarative UI scenarios (`ui_runScenario`) in JSON.
 
-## シナリオとは
+## What is a Scenario?
 
-UI テストシナリオは、複数のステップを**宣言的に記述**し、各ステップの後の UI 状態を`expect`（期待値）で検証する仕様です。シナリオの実行は MCP の `ui_runScenario` ツール経由で自動化され、各ステップの pass/fail が構造化データで返されます。
+A UI test scenario **declaratively describes** a sequence of steps and verifies the UI state after each step using `expect` (expected values). Scenario execution is automated via the MCP `ui_runScenario` tool, which returns the pass/fail result for each step as structured data.
 
 ```json
 {
@@ -24,31 +24,31 @@ UI テストシナリオは、複数のステップを**宣言的に記述**し�
 }
 ```
 
-## トップレベルスキーマ
+## Top-Level Schema
 
-| キー | 型 | 必須 | 説明 |
+| Key | Type | Required | Description |
 |---|---|---|---|
-| `$schema` | string | 否 | JSON Schema 参照（例: `scenario.schema.json`） |
-| `name` | string | **是** | シナリオ名（例: `counter-flow`, `login-flow`） |
-| `steps` | array | **是** | 実行ステップの配列。先頭から順に実行される |
+| `$schema` | string | No | JSON Schema reference (e.g. `scenario.schema.json`) |
+| `name` | string | **Yes** | Scenario name (e.g. `counter-flow`, `login-flow`) |
+| `steps` | array | **Yes** | Array of steps to execute, run in order from the first |
 
-## ステップスキーマ
+## Step Schema
 
-各ステップは以下のキーを持つオブジェクト：
+Each step is an object with the following keys:
 
-| キー | 型 | 必須 | 説明 |
+| Key | Type | Required | Description |
 |---|---|---|---|
-| `action` | string | **是** | 実行コマンド（列挙値） |
-| `testID` | string | **是** | 対象コンポーネントの testID |
-| `parameters` | object | 否 | コマンドパラメータ。コマンドにより形式が異なる |
-| `expect` | object | 否 | 実行後の assert キー・期待値。複数キーを同時に検証可 |
+| `action` | string | **Yes** | Command to execute (enum) |
+| `testID` | string | **Yes** | testID of the target component |
+| `parameters` | object | No | Command parameters. Format varies by command. |
+| `expect` | object | No | Keys and expected values to assert after execution. Multiple keys can be asserted simultaneously. |
 
-## action（コマンド）カタログ
+## Action (Command) Catalog
 
-### ユニバーサルコマンド（すべてのコンポーネントで有効）
+### Universal Commands (available on all components)
 
 #### `getState`
-コンポーネントの現在の描述状態（describedState）を取得します。副作用なし。
+Retrieves the current `describedState` of the component. No side effects.
 
 ```json
 {
@@ -58,12 +58,12 @@ UI テストシナリオは、複数のステップを**宣言的に記述**し�
 }
 ```
 
-**parameters**: なし
+**parameters**: none
 
 ---
 
 #### `setProperty`
-コンポーネントのプロパティを変更します。
+Modifies a component property.
 
 ```json
 {
@@ -74,20 +74,20 @@ UI テストシナリオは、複数のステップを**宣言的に記述**し�
 }
 ```
 
-**parameters** 形式（必須）:
+**parameters** format (required):
 ```json
 {
-  "key": "プロパティ名（文字列）",
-  "value": "任意の値（number / boolean / string など）"
+  "key": "property name (string)",
+  "value": "any value (number / boolean / string, etc.)"
 }
 ```
 
 ---
 
-### コンポーネント固有コマンド
+### Component-Specific Commands
 
 #### `tap`
-ボタンなど、タップ可能なコンポーネントをタップします。
+Taps a tappable component such as a button.
 
 ```json
 {
@@ -97,12 +97,12 @@ UI テストシナリオは、複数のステップを**宣言的に記述**し�
 }
 ```
 
-**parameters**: なし
+**parameters**: none
 
 ---
 
 #### `increment` / `decrement`
-数値カウンターを増加・減少させます（Counter など）。
+Increments or decrements a numeric counter (e.g. Counter).
 
 ```json
 {
@@ -112,12 +112,12 @@ UI テストシナリオは、複数のステップを**宣言的に記述**し�
 }
 ```
 
-**parameters**: なし
+**parameters**: none
 
 ---
 
 #### `reset`
-コンポーネント（Counter など）を初期状態にリセットします。
+Resets the component (e.g. Counter) to its initial state.
 
 ```json
 {
@@ -127,12 +127,12 @@ UI テストシナリオは、複数のステップを**宣言的に記述**し�
 }
 ```
 
-**parameters**: なし
+**parameters**: none
 
 ---
 
 #### `toggle`
-On/Off スイッチのトグル状態を反転します。
+Toggles the On/Off switch state.
 
 ```json
 {
@@ -142,12 +142,12 @@ On/Off スイッチのトグル状態を反転します。
 }
 ```
 
-**parameters**: なし
+**parameters**: none
 
 ---
 
 #### `clear`
-テキスト入力フィールドなどをクリアします。
+Clears a text input field.
 
 ```json
 {
@@ -157,12 +157,12 @@ On/Off スイッチのトグル状態を反転します。
 }
 ```
 
-**parameters**: なし
+**parameters**: none
 
 ---
 
 #### `setEnabled`
-コンポーネントの有効/無効を直接指定します。注: `setProperty { key: "isEnabled", value: bool }` との二重表記を避けるため、可能な限り `setProperty` の使用を推奨。
+Directly sets a component's enabled/disabled state. To avoid redundancy with `setProperty { key: "isEnabled", value: bool }`, prefer using `setProperty` when possible.
 
 ```json
 {
@@ -173,23 +173,23 @@ On/Off スイッチのトグル状態を反転します。
 }
 ```
 
-**parameters**: boolean（true / false）
+**parameters**: boolean (true / false)
 
 ---
 
-## expect（アサーション）キーカタログ
+## expect (Assertion) Key Catalog
 
-### 固定（汎用）キー
+### Fixed (Universal) Keys
 
-以下の5キーはほぼすべてのコンポーネントで使用可能：
+These 5 keys are available on virtually all components:
 
-| キー | 型 | 説明 |
+| Key | Type | Description |
 |---|---|---|
-| `isEnabled` | boolean | コンポーネントが有効か |
-| `title` | string | ボタンのテキストなどの表示文字列 |
-| `isHidden` | boolean | コンポーネントが非表示か |
-| `alpha` | number | 透明度（0.0 ～ 1.0） |
-| `backgroundColor` | string | 背景色（色名または16進数カラーコード） |
+| `isEnabled` | boolean | Whether the component is enabled |
+| `title` | string | Display text such as a button label |
+| `isHidden` | boolean | Whether the component is hidden |
+| `alpha` | number | Opacity (0.0–1.0) |
+| `backgroundColor` | string | Background color (color name or hex code) |
 
 ```json
 {
@@ -203,34 +203,34 @@ On/Off スイッチのトグル状態を反転します。
 }
 ```
 
-### コンポーネント固有キー
+### Component-Specific Keys
 
-各コンポーネントはカスタム描述状態を持ち、固定キーに加えて任意キーで検証可能：
+Each component has a custom described state; you can assert any key in addition to the fixed keys:
 
-| コンポーネント | キー例 | 型 | 説明 |
+| Component | Key example | Type | Description |
 |---|---|---|---|
-| Counter | `count` | number | 現在のカウント値 |
-| OnOffSwitch | `isOn` | boolean | オン/オフ状態 |
-| TextInput | `text` | string | 入力テキスト |
-| Slider | `value` | number | スライダー値 |
-| Label | `label` | string | ラベルテキスト |
+| Counter | `count` | number | Current count value |
+| OnOffSwitch | `isOn` | boolean | On/off state |
+| TextInput | `text` | string | Input text |
+| Slider | `value` | number | Slider value |
+| Label | `label` | string | Label text |
 
 ```json
 {
   "expect": {
-    "count": 5,      // Counter 固有
-    "isEnabled": true // 汎用
+    "count": 5,      // Counter-specific
+    "isEnabled": true // universal
   }
 }
 ```
 
-複数キーは AND 条件で突合：すべてのキーが期待値と一致して初めて pass。
+Multiple keys are evaluated with AND logic: all specified keys must match for the step to pass.
 
 ---
 
-## 完全な実装例
+## Complete Examples
 
-### counter-flow.json（Counter UI のテスト）
+### counter-flow.json (Counter UI test)
 
 ```json
 {
@@ -267,16 +267,16 @@ On/Off スイッチのトグル状態を反転します。
 }
 ```
 
-このシナリオは以下を検証：
-1. カウンターの初期状態は count=0 で有効
-2. increment で count=1 に増加
-3. もう一度 increment で count=2 に増加
-4. setProperty で isEnabled=false に変更
-5. 無効化されたコンポーネントに increment を送っても count は変わらない（=count=2 のままであることを確認）
+This scenario verifies:
+1. Counter initial state is count=0 and enabled
+2. increment increases count to 1
+3. Another increment increases count to 2
+4. setProperty changes isEnabled to false
+5. Sending increment to a disabled component does not change the count (count remains 2)
 
 ---
 
-### login-flow.json（ボタン状態遷移のテスト）
+### login-flow.json (Button state transition test)
 
 ```json
 {
@@ -309,18 +309,18 @@ On/Off スイッチのトグル状態を反転します。
 }
 ```
 
-このシナリオは以下を検証：
-1. ログインボタンの初期状態（有効・テキスト「Log In」・表示・不透明・青色背景）
-2. tap でボタンが無効化され、テキストが「Logged In」に変わる
-3. setProperty で再度有効化される
+This scenario verifies:
+1. Login button initial state (enabled, title "Log In", visible, fully opaque, blue background)
+2. tap disables the button and changes the title to "Logged In"
+3. setProperty re-enables the button
 
 ---
 
-## オーサリングのコツ・落とし穴
+## Authoring Tips & Pitfalls
 
-### 1. 無効化後のコマンド実行は検証が必要
+### 1. Verify commands issued to disabled components
 
-コンポーネントが無効化（`isEnabled: false`）された後も、コマンドは「送信される」ものの、状態変化が起きない可能性があります。このことを明示的に expect で検証しましょう：
+After a component is disabled (`isEnabled: false`), commands are still sent but state changes may not occur. Verify this explicitly with `expect`:
 
 ```json
 {
@@ -332,49 +332,49 @@ On/Off スイッチのトグル状態を反転します。
 {
   "action": "increment",
   "testID": "scene.demo.counter",
-  "expect": { "count": 0 }  // 増えないことを確認
+  "expect": { "count": 0 }  // confirm count does not increase
 }
 ```
 
-### 2. expect は省略可
+### 2. `expect` is optional
 
-不要な検証を省略できます：
+Skip unnecessary assertions:
 
 ```json
 {
   "action": "getState",
   "testID": "scene.demo.counter"
-  // expect なし = 単に状態を取得するだけ
+  // no expect = just retrieve state without asserting
 }
 ```
 
-### 3. parameters の形式はコマンドごとに異なる
+### 3. `parameters` format varies by command
 
-- `setProperty`: 必ず `{ "key": string, "value": any }` 形式
-- `setEnabled`: boolean をそのまま渡す（`parameters: false`）
-- その他コマンド: 通常省略
+- `setProperty`: must use `{ "key": string, "value": any }` format
+- `setEnabled`: pass the boolean directly (`parameters: false`)
+- Other commands: typically omitted
 
-### 4. testID の正確さ
+### 4. Exact `testID` match required
 
-testID はコンポーネント側で設定された値と**完全に一致**する必要があります。タイポや部分一致は動作しません。
+The `testID` must **exactly match** the value set in the component. Typos and partial matches will not work.
 
-### 5. 色文字列の記法
+### 5. Color string format
 
-`backgroundColor` は以下の形式で指定：
-- 色名: `"systemBlue"`, `"systemRed"`, `"white"`, `"black"` など
-- 16進数: `"#FF0000"`（大文字でも小文字でも可）
-- RGB: コンポーネントの実装に依存（通常は色名推奨）
-
----
-
-## JSON Schema 検証
-
-すべてのシナリオは `Example/scenarios/scenario.schema.json` に照らして検証できます。IDE や JSON バリデータを使用して、before-commit に有効性を確認してください。
+`backgroundColor` accepts the following formats:
+- Color name: `"systemBlue"`, `"systemRed"`, `"white"`, `"black"`, etc.
+- Hex: `"#FF0000"` (upper or lower case)
+- RGB: depends on component implementation (color names recommended)
 
 ---
 
-## 関連ドキュメント
+## JSON Schema Validation
 
-- **IPC プロトコル詳細**: `docs/ipc-protocol.md` §4「/perform コマンドリファレンス」
-- **設計仕様**: `docs/design.md` §E2「宣言的シナリオ（Scenario）の実装」
-- **サンプルシナリオ**: `Example/scenarios/`（counter-flow.json, login-flow.json）
+All scenarios can be validated against `Example/scenarios/scenario.schema.json`. Use your IDE or a JSON validator to check validity before committing.
+
+---
+
+## Related Documentation
+
+- **IPC protocol details**: `docs/ipc-protocol.md` §4 "/perform command reference"
+- **Design spec**: `docs/design.md` §E2 "Declarative Scenario implementation"
+- **Sample scenarios**: `Example/scenarios/` (counter-flow.json, login-flow.json)

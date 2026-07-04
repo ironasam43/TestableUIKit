@@ -1,16 +1,16 @@
 // swift-tools-version: 6.0
 import PackageDescription
 
-// TestableUIKit MCP サーバ（Swift 版）独立 sub-package。
+// TestableUIKit MCP server (Swift) — independent sub-package.
 //
-// 【依存封じ込めの設計意図】
-// MCP swift-sdk は tools-version 6.1 / iOS16・macOS13 を要求するため、
-// メインの TestableUIKit パッケージ（tools 5.9 / iOS15）に同梱すると
-// library consumer まで iOS16・Swift6・swift-system 等の transitive 依存へ
-// 巻き込んでしまう。これを避けるため MCP サーバは **完全に独立した
-// sub-package** として分離し、メイン Package.swift には一切手を入れない。
-// MCP サーバは TestableUIKit の Swift 型を import せず HTTP IPC のみで
-// 通信するため、ソース共有は不要でこの分離が成立する。
+// [Design intent: dependency containment]
+// The MCP swift-sdk requires tools-version 6.1 / iOS16 / macOS13, so bundling it
+// with the main TestableUIKit package (tools 5.9 / iOS15) would pull transitive
+// dependencies (iOS16, Swift 6, swift-system, etc.) onto all library consumers.
+// To avoid this, the MCP server is split out as a completely independent sub-package
+// and the main Package.swift is left untouched.
+// The MCP server communicates with TestableUIKit via HTTP IPC only (no Swift type
+// imports), so source sharing is unnecessary and this separation is valid.
 let package = Package(
   name: "TestableUIKitMCP",
   platforms: [
@@ -29,13 +29,13 @@ let package = Package(
     )
   ],
   targets: [
-    // 純粋ヘルパー（外部依存ゼロ・swift-sdk 非依存）。XCTest 対象。
+    // Pure helpers (no external dependencies, no swift-sdk). XCTest target.
     .target(
       name: "TestableUIKitMCPCore",
       dependencies: [],
       path: "Sources/TestableUIKitMCPCore"
     ),
-    // MCP サーバ本体。swift-sdk 依存はこの executable のみに付与する。
+    // MCP server executable. swift-sdk dependency is scoped to this target only.
     .executableTarget(
       name: "TestableUIKitMCP",
       dependencies: [
@@ -44,7 +44,7 @@ let package = Package(
       ],
       path: "Sources/TestableUIKitMCP"
     ),
-    // 純関数の機械検証（swift-sdk 非依存）。
+    // Unit tests for pure functions (no swift-sdk dependency).
     .testTarget(
       name: "TestableUIKitMCPCoreTests",
       dependencies: ["TestableUIKitMCPCore"],

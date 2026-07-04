@@ -1,25 +1,25 @@
 """
 TestableUIKit IPC integration tests (pytest).
 
-テスト対象:
+Tests:
   - GET /ping
-  - POST /perform: getState / tap（有効・無効 no-op）/ setProperty（isEnabled / title）
+  - POST /perform: getState / tap (enabled / disabled no-op) / setProperty (isEnabled / title)
 
-前提: DemoApp が iOS Simulator 上で起動済みで、
-      localhost:8888 で TestableServer がリッスンしている。
-conftest.py の autouse fixture により、各テスト前に LoginButton を初期状態にリセットする。
+Prerequisite: DemoApp must be running on iOS Simulator with
+              TestableServer listening on localhost:8888.
+The autouse fixture in conftest.py resets LoginButton to initial state before each test.
 """
 
 import requests
 
 
-# ========== ヘルパー ==========
+# ========== Helpers ==========
 
 EXPECTED_KEYS = {"isEnabled", "title", "isHidden", "alpha", "backgroundColor"}
 
 
 def assert_described_state(state: dict):
-    """describedState が 5キー固定スキーマを満たすことを検証する"""
+    """Verify that describedState satisfies the 5-key fixed schema."""
     assert set(state.keys()) == EXPECTED_KEYS, (
         f"Expected keys {EXPECTED_KEYS}, got {set(state.keys())}"
     )
@@ -29,7 +29,7 @@ def assert_described_state(state: dict):
 
 class TestPing:
     def test_ping_returns_ok(self, base_url):
-        """GET /ping は {"status": "ok"} を返す"""
+        """GET /ping returns {"status": "ok"}."""
         resp = requests.get(f"{base_url}/ping", timeout=10)
         assert resp.status_code == 200
         assert resp.json() == {"status": "ok"}
@@ -39,12 +39,12 @@ class TestPing:
 
 class TestGetState:
     def test_initial_state_has_five_keys(self, perform):
-        """getState は 5キー固定の describedState を返す"""
+        """getState returns describedState with 5 fixed keys."""
         state = perform("getState")
         assert_described_state(state)
 
     def test_initial_state_values(self, perform):
-        """getState の初期値が期待値と一致する"""
+        """Initial values from getState match expected values."""
         state = perform("getState")
         assert state["isEnabled"] is True
         assert state["title"] == "Log In"
@@ -55,53 +55,53 @@ class TestGetState:
 
 class TestTap:
     def test_tap_enabled_changes_state(self, perform):
-        """有効状態で tap すると isEnabled=false, title="Logged In" に変化する"""
+        """Tapping when enabled changes isEnabled=false, title="Logged In"."""
         state = perform("tap")
         assert_described_state(state)
         assert state["isEnabled"] is False
         assert state["title"] == "Logged In"
 
     def test_tap_enabled_unchanged_other_keys(self, perform):
-        """tap 後も isHidden / alpha / backgroundColor は変化しない"""
+        """isHidden / alpha / backgroundColor remain unchanged after tap."""
         state = perform("tap")
         assert state["isHidden"] is False
         assert state["alpha"] == 1.0
         assert state["backgroundColor"] == "systemBlue"
 
     def test_tap_disabled_is_noop(self, perform):
-        """無効状態で tap しても状態は変化しない（no-op）"""
-        # 無効にする
+        """Tapping when disabled is a no-op (state does not change)."""
+        # Disable first
         perform("setProperty", {"key": "isEnabled", "value": False})
 
-        # tap を実行（no-op のはず）
+        # Tap (should be no-op)
         state = perform("tap")
         assert_described_state(state)
         assert state["isEnabled"] is False
-        assert state["title"] == "Log In"  # tap 前と同じ
+        assert state["title"] == "Log In"  # same as before tap
 
 
 class TestSetProperty:
     def test_set_property_is_enabled_false(self, perform):
-        """setProperty で isEnabled を false に設定できる"""
+        """setProperty can set isEnabled to false."""
         state = perform("setProperty", {"key": "isEnabled", "value": False})
         assert_described_state(state)
         assert state["isEnabled"] is False
 
     def test_set_property_is_enabled_true(self, perform):
-        """setProperty で isEnabled を true に復帰できる"""
+        """setProperty can restore isEnabled to true."""
         perform("setProperty", {"key": "isEnabled", "value": False})
         state = perform("setProperty", {"key": "isEnabled", "value": True})
         assert_described_state(state)
         assert state["isEnabled"] is True
 
     def test_set_property_title(self, perform):
-        """setProperty で title を変更できる"""
+        """setProperty can change title."""
         state = perform("setProperty", {"key": "title", "value": "Testing"})
         assert_described_state(state)
         assert state["title"] == "Testing"
 
     def test_set_property_title_persists(self, perform):
-        """setProperty で変更した title が getState でも維持される"""
+        """Title changed by setProperty is preserved in getState."""
         perform("setProperty", {"key": "title", "value": "Persisted"})
         state = perform("getState")
         assert state["title"] == "Persisted"

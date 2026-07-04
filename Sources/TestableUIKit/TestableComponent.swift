@@ -2,15 +2,15 @@ import Foundation
 
 // MARK: - TestableProperty
 //
-// state の 1 プロパティに対する get/set のペア。
-// JSONValue ↔ State プロパティ の双方向変換を表現する。
-// 便宜コンストラクタ（.bool/.int/.double/.string）で WritableKeyPath から
-// get/set を自動生成できる。型不一致時は set 内で TestError.invalidParameters を throw する。
+// Represents a get/set pair for a single property of State.
+// Encapsulates bidirectional conversion between JSONValue and a State property.
+// Convenience initializers (.bool/.int/.double/.string) automatically derive
+// get/set from a WritableKeyPath. Type mismatches throw TestError.invalidParameters inside set.
 
 public struct TestableProperty<State> {
-  /// state から JSONValue を取り出す
+  /// Extracts a JSONValue from state
   public let get: (State) -> JSONValue
-  /// JSONValue を state へ書き戻す（型不一致は throw）
+  /// Writes a JSONValue back to state (throws on type mismatch)
   public let set: (inout State, JSONValue) throws -> Void
 
   public init(
@@ -21,9 +21,9 @@ public struct TestableProperty<State> {
     self.set = set
   }
 
-  // MARK: - KeyPath ベースの便宜コンストラクタ
+  // MARK: - KeyPath-Based Convenience Initializers
 
-  /// Bool プロパティ用
+  /// For Bool properties
   public static func bool(_ kp: WritableKeyPath<State, Bool>) -> TestableProperty<State> {
     TestableProperty(
       get: { .bool($0[keyPath: kp]) },
@@ -34,7 +34,7 @@ public struct TestableProperty<State> {
     )
   }
 
-  /// Int プロパティ用
+  /// For Int properties
   public static func int(_ kp: WritableKeyPath<State, Int>) -> TestableProperty<State> {
     TestableProperty(
       get: { .int($0[keyPath: kp]) },
@@ -45,7 +45,7 @@ public struct TestableProperty<State> {
     )
   }
 
-  /// Double プロパティ用（int も受理して Double 化する）
+  /// For Double properties (also accepts Int, converting to Double)
   public static func double(_ kp: WritableKeyPath<State, Double>) -> TestableProperty<State> {
     TestableProperty(
       get: { .double($0[keyPath: kp]) },
@@ -62,7 +62,7 @@ public struct TestableProperty<State> {
     )
   }
 
-  /// String プロパティ用
+  /// For String properties
   public static func string(_ kp: WritableKeyPath<State, String>) -> TestableProperty<State> {
     TestableProperty(
       get: { .string($0[keyPath: kp]) },
@@ -74,11 +74,11 @@ public struct TestableProperty<State> {
   }
 }
 
-// MARK: - Mirror フォールバック describe
+// MARK: - Mirror Fallback describe
 //
-// describe クロージャ・properties いずれも無い場合に、Mirror で state の
-// stored property を走査し、Bool/Int/Double/String の値型のみを自動 describe する。
-// SwiftUI の private 型（Binding 内部など）には触れず、自前の値型に限定する。
+// When neither a describe closure nor properties are provided,
+// Mirror walks State's stored properties and auto-describes Bool/Int/Double/String value types.
+// SwiftUI private types (e.g. Binding internals) are skipped; only own value types are included.
 
 func mirrorDescribe<State>(_ state: State) -> [String: JSONValue] {
   var result: [String: JSONValue] = [:]

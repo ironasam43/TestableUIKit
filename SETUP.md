@@ -1,193 +1,193 @@
-# TestableUIKit Demo App セットアップ手順
+# TestableUIKit Demo App — Setup Guide
 
-iOS Simulator 上で TestableUIKit を実行するための手順書です。
+Step-by-step instructions for running TestableUIKit on the iOS Simulator.
 
-## 前提条件
+## Prerequisites
 
-- Xcode 14.0 以上
-- iOS 14 以上の Simulator
-- Python 3.8 以上（テストランナー用）
+- Xcode 14.0 or later
+- iOS 14 or later Simulator
+- Python 3.8 or later (for the test runner)
 
-## ステップ 1：iOS App プロジェクト作成
+## Step 1: Create an iOS App Project
 
-### 1-1. Xcode を起動し、新規プロジェクト作成
+### 1-1. Launch Xcode and create a new project
 
 ```
 Xcode > File > New > Project...
 ```
 
-### 1-2. プロジェクトテンプレート選択
+### 1-2. Choose a project template
 
 - **Platform**: iOS
 - **Template**: App
 
-### 1-3. プロジェクト設定
+### 1-3. Configure the project
 
-| 項目 | 値 |
+| Item | Value |
 |---|---|
 | Product Name | `TestableUIKitDemo` |
-| Team | （自分の Team を選択） |
+| Team | (select your Team) |
 | Organization Identifier | `com.example` |
 | Interface | SwiftUI |
 | Language | Swift |
 
-### 1-4. プロジェクト保存先
+### 1-4. Choose a save location
 
 ```
 /Users/koba-p/Documents/Dev/projects/TestableUIKit/
 ```
 
-✅ プロジェクトが作成されました。Xcode が開きます。
+✅ The project has been created. Xcode will open.
 
 ---
 
-## ステップ 2：TestableUIKit ライブラリを依存に追加
+## Step 2: Add the TestableUIKit Library as a Dependency
 
-### 2-1. Package 依存を追加
+### 2-1. Add a Package dependency
 
 ```
 Project (TestableUIKitDemo) > Package Dependencies > +
 ```
 
-### 2-2. ローカルパス指定
+### 2-2. Specify the local path
 
 ```
 Add Local...
 ```
 
-ディレクトリを選択：
+Select the directory:
 ```
 /Users/koba-p/Documents/Dev/projects/TestableUIKit
 ```
 
-### 2-3. バージョン確認
+### 2-3. Confirm the version
 
-- Branch: `main` （または最新）
-- 依存を追加
+- Branch: `main` (or latest)
+- Add the dependency
 
-✅ TestableUIKit が Linked Frameworks に追加されました。
+✅ TestableUIKit has been added to Linked Frameworks.
 
 ---
 
-## ステップ 3：ファイル追加
+## Step 3: Add Files
 
-### 3-1. DemoApp.swift を追加
+### 3-1. Add DemoApp.swift
 
-1. Xcode で `File > New > File...` を選択
-2. `Swift File` テンプレートを選択
-3. ファイル名：`DemoApp.swift`
-4. Save 先：プロジェクト直下
-5. 以下のコードを全て貼り付け：
+1. In Xcode, select `File > New > File...`
+2. Choose the `Swift File` template
+3. Filename: `DemoApp.swift`
+4. Save to: project root
+5. Paste the following code:
 
 ```swift
-// === ここから ===
-// DemoApp-iOS-template.swift の内容を全てコピペ
-// === ここまで ===
+// === START ===
+// Copy and paste the entire contents of DemoApp-iOS-template.swift
+// === END ===
 ```
 
-参考ファイル：
+Reference file:
 ```
 ../DemoApp-iOS-template.swift
 ```
 
-### 3-2. LoginButton.swift を追加
+### 3-2. Add LoginButton.swift
 
-同様に `LoginButton.swift` を作成：
+Similarly, create `LoginButton.swift`:
 
 ```swift
-// === ここから ===
-// LoginButton-iOS-template.swift の内容を全てコピペ
-// === ここまで ===
+// === START ===
+// Copy and paste the entire contents of LoginButton-iOS-template.swift
+// === END ===
 ```
 
-参考ファイル：
+Reference file:
 ```
 ../LoginButton-iOS-template.swift
 ```
 
-✅ 両ファイルが Xcode プロジェクトに追加されました。
+✅ Both files have been added to the Xcode project.
 
 ---
 
-## ステップ 4：ビルド設定確認
+## Step 4: Verify Build Settings
 
-### 4-1. Build Settings を確認
+### 4-1. Check Build Settings
 
 ```
 Project (TestableUIKitDemo) > Build Settings
 ```
 
-| キー | 値 |
+| Key | Value |
 |---|---|
-| iOS Deployment Target | 14.0 以上 |
-| Architectures | arm64 (Simulator は x86_64) |
+| iOS Deployment Target | 14.0 or later |
+| Architectures | arm64 (Simulator: x86_64) |
 
-### 4-2. Signing & Capabilities を設定（必要に応じて）
+### 4-2. Configure Signing & Capabilities (if needed)
 
 ```
-Project > Signing & Capabilities > Team を設定
+Project > Signing & Capabilities > Set Team
 ```
 
-✅ ビルド設定が完了しました。
+✅ Build settings are complete.
 
 ---
 
-## ステップ 5：Simulator を起動
+## Step 5: Run in Simulator
 
-### 5-1. Simulator デバイス選択
+### 5-1. Select a Simulator device
 
 ```
-Xcode > Product > Destination > [お好みの iPhone] > Simulator
+Xcode > Product > Destination > [your preferred iPhone] > Simulator
 ```
 
-例：
+Examples:
 - `iPhone 15 Pro (17.0)`
 - `iPhone 14 (16.0)`
 
-### 5-2. Simulator を起動
+### 5-2. Launch the Simulator
 
 ```
 Xcode > Product > Run
-または Command + R
+or Command + R
 ```
 
-**初回起動時：**
-- Simulator が起動します（1-2 分待機）
-- DemoApp が Simulator 上に表示されます
+**On first launch:**
+- The Simulator will start (wait 1–2 minutes)
+- DemoApp will appear in the Simulator
 
-✅ DemoApp が Simulator で起動し、「Testable UIKit Demo」画面が表示されます。
+✅ DemoApp launches in the Simulator and the "Testable UIKit Demo" screen is displayed.
 
 ---
 
-## ステップ 6：テスト実行
+## Step 6: Run Tests
 
-### 6-1. Simulator でアプリが起動していることを確認
+### 6-1. Confirm the app is running in the Simulator
 
-画面に以下が表示される：
-- `Testable UIKit Demo` （タイトル）
-- `Log In` ボタン（ブルー色）
+The screen should display:
+- `Testable UIKit Demo` (title)
+- `Log In` button (blue)
 - `Server running on http://localhost:8888`
 
-### 6-2. コンソールでサーバー起動確認
+### 6-2. Confirm server startup in console
 
-Xcode の Debug Console に以下が表示される：
+The following should appear in Xcode's Debug Console:
 
 ```
 [SERVER] Started on http://localhost:8888
 ```
 
-### 6-3. Python テストランナーを実行
+### 6-3. Run the Python test runner
 
-別ターミナルを開き、プロジェクトディレクトリで：
+Open a separate terminal and run from the project directory:
 
 ```bash
 cd /Users/koba-p/Documents/Dev/projects/TestableUIKit
 python3 run_test.py
 ```
 
-### 6-4. テスト結果確認
+### 6-4. Check test results
 
-#### Phase A（ネットワーク経路確認）
+#### Phase A (Network Path Verification)
 
 ```
 [PHASE A] Network Path Verification
@@ -196,7 +196,7 @@ python3 run_test.py
    Response: {"status": "ok"}
 ```
 
-#### Phase B（ロジック検証）
+#### Phase B (Logic Verification)
 
 ```
 [PHASE B] Logic Verification - Tap LoginButton
@@ -208,172 +208,172 @@ python3 run_test.py
    }
 ```
 
-✅ **All tests passed!** が表示されれば完成。
+✅ You are done when **All tests passed!** is displayed.
 
 ---
 
-## ステップ 7：実機（LAN 越し）での実行
+## Step 7: Running on a Physical Device (LAN)
 
-Simulator ではなく、実機の iPhone / iPad 上でテストを実行するための手順です。
+Instructions for running tests on a physical iPhone or iPad instead of the Simulator.
 
-### 前提条件
+### Prerequisites
 
-- DemoApp が DEBUG ビルドで実機にインストール済み
-- 実機と Mac が同じ Wi-Fi ネットワークに接続している
-- Xcode コンソールで DemoApp が起動していることを確認
+- DemoApp installed on the device via a DEBUG build
+- The device and Mac are connected to the same Wi-Fi network
+- Confirm in the Xcode console that DemoApp is running
 
-### 7-1. LAN 公開の仕組み確認
+### 7-1. How LAN exposure works
 
-DemoApp は DEBUG ビルドの場合、HTTP サーバを `0.0.0.0:8888` にバインドします（ローカルネットワークで公開）。
+In a DEBUG build, DemoApp binds the HTTP server to `0.0.0.0:8888` (exposed on the local network).
 
 ```swift
-// DemoApp.swift より
+// From DemoApp.swift
 #if DEBUG
-    let server = try TestableServer(port: 8888, host: "0.0.0.0")  // LAN 公開
+    let server = try TestableServer(port: 8888, host: "0.0.0.0")  // LAN exposed
 #else
-    let server = try TestableServer(port: 8888)  // Release: localhost のみ
+    let server = try TestableServer(port: 8888)  // Release: localhost only
 #endif
 ```
 
-### 7-2. サーバー起動ログの確認
+### 7-2. Confirm server startup log
 
-実機で DemoApp を起動後、Xcode の Debug Console に以下が表示されることを確認：
+After launching DemoApp on the device, confirm the following appears in Xcode's Debug Console:
 
 ```
 ✅ TestableServer listening on http://0.0.0.0:8888
 ```
 
-このログが出ていれば、LAN 越しのアクセスが可能です。
+If this log appears, LAN access is available.
 
-### 7-3. 実機の IP アドレスを確認
+### 7-3. Find the device IP address
 
-実機（iPhone / iPad）の設定から IP アドレスを調べます：
+Look up the IP address from the device (iPhone / iPad) Settings:
 
 ```
-設定 > Wi-Fi > 接続中のネットワーク > 情報 > IP アドレス
+Settings > Wi-Fi > Connected Network > Info > IP Address
 ```
 
-例：`192.168.0.181` など
+Example: `192.168.0.181`
 
-**重要**: DHCP により実機の IP が変動することがあります。テスト実行のたびに確認することをお勧めします。
+**Note**: The device IP may change due to DHCP. It is recommended to verify it each time you run tests.
 
-### 7-4. Mac から実機へのアクセス設定
+### 7-4. Configure Mac-to-Device access
 
-Mac のターミナルで、環境変数 `TESTABLE_IPC_HOST` に実機の IP を指定してテストを実行します：
+In the Mac terminal, run the test runner with the `TESTABLE_IPC_HOST` environment variable set to the device IP:
 
 ```bash
 cd /Users/koba-p/Documents/Dev/projects/TestableUIKit
 TESTABLE_IPC_HOST=192.168.0.181 python3 run_test.py
 ```
 
-**設定項目**:
-- `TESTABLE_IPC_HOST`: 実機の IP アドレス（デフォルト: `localhost`）
-- `TESTABLE_IPC_PORT`: ポート番号（デフォルト: `8888`）。通常は省略可
+**Configuration**:
+- `TESTABLE_IPC_HOST`: Device IP address (default: `localhost`)
+- `TESTABLE_IPC_PORT`: Port number (default: `8888`). Can usually be omitted.
 
-**コマンド例**：
+**Command examples**:
 ```bash
-# ポート指定なし（デフォルト 8888）
+# Without port (default 8888)
 TESTABLE_IPC_HOST=192.168.0.181 python3 run_test.py
 
-# ポート指定あり
+# With explicit port
 TESTABLE_IPC_HOST=192.168.0.181 TESTABLE_IPC_PORT=8888 python3 run_test.py
 ```
 
-### 7-5. screenshot 取得の経路について
+### 7-5. Screenshot capture routes
 
-テスト実行時、UI のスクリーンショット取得は以下のように動作します：
+During test execution, UI screenshot capture works as follows:
 
-| 環境 | 経路 | 説明 |
+| Environment | Route | Description |
 |---|---|---|
-| 実機 | `GET /screenshot` | アプリ内（`UIGraphicsImageRenderer`）でキャプチャ。Simulator に依存しない |
-| Simulator | `GET /screenshot` 試行 → simctl フォールバック | `GET /screenshot` が利用可能な場合はそちらを優先。不可の場合のみ macOS `simctl` でキャプチャ |
+| Physical device | `GET /screenshot` | Captured in-app via `UIGraphicsImageRenderer`. Does not depend on the Simulator. |
+| Simulator | Try `GET /screenshot` → fall back to simctl | If `GET /screenshot` is available it is preferred; `simctl` is used only when it is not. |
 
-**実装詳細**:
-- `mcp_server/testableui_mcp.py` の `ui_screenshot()` が最初に `GET /screenshot` をリクエスト
-- 実機はこのエンドポイントで直接キャプチャを返す
-- Simulator で接続エラーが発生した場合のみ `simctl` にフォールバック
+**Implementation details**:
+- `mcp_server/testableui_mcp.py`'s `ui_screenshot()` first requests `GET /screenshot`
+- On a physical device, this endpoint returns the capture directly
+- The `simctl` fallback is triggered only when a connection error occurs in the Simulator
 
-### 7-6. 実機向けトラブルシューティング
+### 7-6. Physical device troubleshooting
 
-#### エラー：`Connection refused`
+#### Error: `Connection refused`
 
-実機の IP が間違っているか、DemoApp が起動していません：
+The device IP is incorrect or DemoApp is not running:
 
-1. **実機で DemoApp が起動していることを確認**
-2. **実機の IP アドレスを再確認** （設定 > Wi-Fi > 情報）
-3. **Xcode コンソールに `✅ TestableServer listening on http://0.0.0.0:8888` が表示されているか確認**
+1. **Confirm DemoApp is running on the device**
+2. **Re-check the device IP address** (Settings > Wi-Fi > Info)
+3. **Confirm `✅ TestableServer listening on http://0.0.0.0:8888` appears in the Xcode console**
 
-#### エラー：`Timeout`
+#### Error: `Timeout`
 
-実機と Mac が接続できていません：
+The device and Mac cannot communicate:
 
-1. **Wi-Fi 接続確認**: 両者が同じネットワークに接続しているか確認
-2. **ファイアウォール確認**: Mac のファイアウォール設定で ポート 8888 がブロックされていないか確認
+1. **Wi-Fi check**: Confirm both are connected to the same network
+2. **Firewall check**: Confirm port 8888 is not blocked in Mac firewall settings
    ```
    System Preferences > Security & Privacy > Firewall Options
    ```
-3. **実機と Mac のネットワーク隔離**: 企業 Wi-Fi など、デバイス間通信が制限されていないか確認
+3. **Network isolation**: Confirm that device-to-device communication is not restricted (e.g., corporate Wi-Fi)
 
-#### エラー：`RuntimeError: simctl not available on a non-loopback host`
+#### Error: `RuntimeError: simctl not available on a non-loopback host`
 
-実機への接続は成功しましたが、screenshot フォールバック時のエラーです：
+The connection to the device succeeded, but this error appears during the screenshot fallback:
 
-- このエラーは無視できます。実機からの `GET /screenshot` で既にキャプチャが取得できています
-- Simulator のみ `simctl` フォールバックが有効です
+- This error can be ignored. The capture has already been obtained via `GET /screenshot` from the device.
+- The `simctl` fallback is only active for the Simulator.
 
 ---
 
-## トラブルシューティング
+## Troubleshooting
 
-### エラー：`No module named 'requests'`
+### Error: `No module named 'requests'`
 
 ```bash
 pip3 install requests
 ```
 
-### エラー：`curl: command not found`
+### Error: `curl: command not found`
 
-macOS にはデフォルトで curl が含まれています。別の方法でテスト：
+macOS includes curl by default. Alternative way to test:
 
 ```bash
-# curl の代わりに Python requests を使用
-# run_test.py を手動修正して requests 使用に変更
+# Use Python requests instead of curl
+# Manually modify run_test.py to use requests
 ```
 
-### エラー：`Server not reachable`
+### Error: `Server not reachable`
 
-Simulator が localhost:8888 にアクセスできない場合：
+If the Simulator cannot reach localhost:8888:
 
-1. **Simulator を再起動**：
+1. **Restart the Simulator**:
    ```
    Xcode > Device > Erase All Content and Settings...
    ```
 
-2. **ファイアウォール確認**：
+2. **Check the firewall**:
    ```
    System Preferences > Security & Privacy > Firewall
    ```
 
-3. **Xcode 再起動**
+3. **Restart Xcode**
 
-### エラー：`isEnabled が false`
+### Error: `isEnabled is false`
 
-ボタンが disabled 状態。DemoApp.swift の LoginButton 初期化を確認：
+The button is in a disabled state. Check the LoginButton initialization in DemoApp.swift:
 
 ```swift
-button.isEnabled = true  // 追加
+button.isEnabled = true  // add this
 ```
 
 ---
 
-## 次のステップ
+## Next Steps
 
-垂直スライスの検証が完了しました。以下は次フェーズです：
+The vertical slice has been validated. The following are next-phase items:
 
-- Contract 定義の追加（validators）
-- スクリーンショット + 変化分析
-- AI テスト生成の統合
+- Add Contract definitions (validators)
+- Screenshot + diff analysis
+- AI test generation integration
 
 ---
 
-**質問や問題がある場合は、Auditor に報告してください。**
+**If you have any questions or issues, please open a GitHub Issue.**

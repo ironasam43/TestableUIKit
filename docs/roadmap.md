@@ -1,180 +1,180 @@
-# TestableUIKit 実用化ロードマップ
+# TestableUIKit Productization Roadmap
 
-**最終更新**: 2026-06-23  
-**対象**: TestableUIKit プロジェクト全体
-
----
-
-## 1. 実用化の定義
-
-**実用化**＝「他人が自分のアプリの UI コンポーネントに組み込んで UI テストを書ける状態」
-
-現在の段階（Phase 0 PoC）では「自作デモを自分でテストできる」ところまで到達。実用化には以下が必要：
-
-- テストランナーの正式スイート化（tap/setProperty の Response schema 確定）
-- 実 SwiftUI コンポーネント対応
-- 配布・導入の DX 整備（semver タグ、README、計装手順、サンプル）
-- 堅牢性の向上（ポート競合、多重起動、エラー応答）
+**Last updated**: 2026-06-23  
+**Scope**: TestableUIKit project as a whole
 
 ---
 
-## 2. 現在地（到達済み）
+## 1. Definition of Productization
 
-> **進捗注記（2026-06-23）**: 推奨ルートの想定（STEP1→2→3→4）に対し、実際は **STEP 2 が超過達成・STEP 4 が完走**し、**STEP 3（配布・DX）も完了**（2026-06-25）した。詳細は各 STEP の見出しを参照。
+**Productization** = the state where others can integrate it into their app's UI components and write UI tests
 
-**コア実装**:
-- `AnyTestable` protocol（testID / describedState / perform）✅
-- `TestableServer`（HTTP over localhost:8888・実機向け `0.0.0.0` 公開 ＋ `GET /screenshot` 対応）✅
-- `TestableRegistry` ✅ — **シングルトン廃止・SwiftUI Environment キー注入方式へ移行済み**（STEP 4 関連リファクタ）
-- 統一コマンド I/F（`getState` / `tap` / `setProperty` / `setEnabled`）✅
-- 5キー固定 describedState（isEnabled / title / isHidden / alpha / backgroundColor）✅
+At the current stage (Phase 0 PoC), we have reached the point of "testing your own demo yourself." Productization requires the following:
 
-**実装例 / 計装**:
-- iOS DemoApp（UIKit LoginButton）✅
-- CLI executable（TestableUIKitDemo）✅
-- Core logic の DRY 抽出（LoginButtonCore）✅
-- **`.testable(_:)` ViewModifier 実装済み**（`Sources/TestableUIKit/TestableView.swift`）✅
-- **多様コンポーネント計装**：`CounterCore` / `TextInputCore` / `OnOffSwitchCore` / `RangeSliderCore` の 4 Core 実装済み ✅
+- Formal test runner suite (confirm Response schema for tap/setProperty)
+- Real SwiftUI component support
+- Distribution / onboarding DX (semver tags, README, instrumentation guide, samples)
+- Robustness improvements (port conflicts, multiple instances, error responses)
 
-**MCP 連携**:
-- **独立 MCP サーバ（`mcp_server/testableui_mcp.py`）実装済み**：`ui_ping` / `ui_getState` / `ui_perform` / `ui_screenshot` の 4 ツール ✅
+---
 
-**品質**:
-- CI 全3ジョブ ✅ PASS：
+## 2. Current Status (Completed)
+
+> **Progress note (2026-06-23)**: Compared to the planned route (STEP1→2→3→4), in practice **STEP 2 exceeded its goals and STEP 4 was completed in full**, and **STEP 3 (Distribution & DX) is also complete** (2026-06-25). See each STEP heading for details.
+
+**Core implementation**:
+- `AnyTestable` protocol (testID / describedState / perform) ✅
+- `TestableServer` (HTTP over localhost:8888 / `0.0.0.0` binding for physical devices + `GET /screenshot` support) ✅
+- `TestableRegistry` ✅ — **singleton removed; migrated to SwiftUI Environment key injection** (STEP 4 related refactor)
+- Unified command interface (`getState` / `tap` / `setProperty` / `setEnabled`) ✅
+- 5-key fixed describedState (isEnabled / title / isHidden / alpha / backgroundColor) ✅
+
+**Example implementations / instrumentation**:
+- iOS DemoApp (UIKit LoginButton) ✅
+- CLI executable (TestableUIKitDemo) ✅
+- DRY extraction of Core logic (LoginButtonCore) ✅
+- **`.testable(_:)` ViewModifier implemented** (`Sources/TestableUIKit/TestableView.swift`) ✅
+- **Diverse component instrumentation**: 4 Core implementations — `CounterCore` / `TextInputCore` / `OnOffSwitchCore` / `RangeSliderCore` ✅
+
+**MCP integration**:
+- **Standalone MCP server (`mcp_server/testableui_mcp.py`) implemented**: 4 tools — `ui_ping` / `ui_getState` / `ui_perform` / `ui_screenshot` ✅
+
+**Quality**:
+- CI all 3 jobs ✅ PASS:
   - Swift Package Unit Tests
   - Build iOS DemoApp
   - Phase 0 PoC - Simulator Boot, App Launch & Loopback
-- **テスト規模：`swift test` 100 PASS / `pytest` 59 PASS** ✅（PoC 当初の 23 PASS から大幅進展）
+- **Test scale: `swift test` 100 PASS / `pytest` 59 PASS** ✅ (significant progress from 23 PASS at PoC start)
 
-**ドキュメント**:
-- `docs/design.md`（アーキテクチャ・定義A/B・テスト哲学・§D 実機対応）✅
-- `docs/ipc-protocol.md`（HTTP API 仕様・`GET /screenshot` 追記）✅
-
----
-
-## 3. 実用化への4ステップ
-
-### STEP 1: テストランナー昇格
-
-**内容**: `run_test.py` を正式な pytest テストスイートに統合し、tap・setProperty の Response schema を確定
-
-**現状**: 
-- run_test.py は integration テスト（Phase A/B/B-5）
-- getState のみ assert 済み
-- tap・setProperty の Response schema は未確定（run_test.py 全行照合で仕様確認中）
-
-**完了条件**:
-1. tap・setProperty の Response schema を `docs/ipc-protocol.md` で本格確定
-2. run_test.py を pytest フレームワークに再実装（fixtures / parametrize 等）
-3. CI ワークフロー内で `pytest` ジョブを統合実行
-4. テスト 23+ PASS（既存の swift test との並行）
-
-**工数**: 小（0.5〜1 セッション）
-
-**対応設計書**: [Design B](design.md#b-テストランナー統合) — テストランナー統合
+**Documentation**:
+- `docs/design.md` (architecture / Definition A/B / test philosophy / §D physical device support) ✅
+- `docs/ipc-protocol.md` (HTTP API spec / `GET /screenshot` added) ✅
 
 ---
 
-### STEP 2: SwiftUI コンポーネント対応 ✅ 完了（超過達成）
+## 3. Four Steps to Productization
 
-**内容**: CLI スタブ実装（CLIDemoLoginButton）から実 SwiftUI コンポーネント（Button / Toggle / TextField など）へ移行。ViewModifier + Registry で任意の View を Testable 化
+### STEP 1: Promote the Test Runner
 
-**実績（2026-06-23）**: 
-- ✅ `.testable(_:)` ViewModifier 実装済み（`Sources/TestableUIKit/TestableView.swift`）。任意の SwiftUI View を Testable に透過的にラップ
-- ✅ TestableRegistry アクセスは Environment キー注入方式で実現（STEP 4 で EnvironmentObject から移行・超過達成）
-- ✅ 多様コンポーネント計装：`CounterCore` / `TextInputCore` / `OnOffSwitchCore` / `RangeSliderCore` の 4 Core を実装（当初目標「3 以上」を超過）
-- ✅ Counter / TextInput / OnOffSwitch / RangeSlider で計装テスト実証（`swift test` 100 PASS の一部）
+**Description**: Integrate `run_test.py` into a formal pytest test suite and finalize the Response schema for tap and setProperty
 
-**完了条件**（すべて達成）:
-1. ✅ ViewModifier `.testable(_:)` を実装。任意の SwiftUI View を Testable に透過的にラップ
-2. ✅ Registry アクセスを Environment キー注入で実現（EnvironmentObject 案を上回るシングルトンレス設計へ）
-3. ✅ DemoApp のコンポーネント数を 3 以上に増加（4 Core）
-4. ✅ 各種 View（Counter / TextInput / OnOffSwitch / RangeSlider）で計装テスト実証
+**Current state**: 
+- run_test.py contains integration tests (Phase A/B/B-5)
+- Only getState has assertions
+- Response schema for tap/setProperty is not yet finalized (spec being confirmed by full-line review of run_test.py)
 
-**対応設計書**: [Design C](design.md#c-swiftui-コンポーネント対応) — SwiftUI コンポーネント対応
+**Completion conditions**:
+1. Finalize the tap/setProperty Response schema in `docs/ipc-protocol.md`
+2. Re-implement run_test.py as a pytest framework (fixtures / parametrize, etc.)
+3. Run the `pytest` job as part of the CI workflow
+4. 23+ tests PASS (in parallel with existing swift test)
 
----
+**Effort**: Small (0.5–1 session)
 
-### STEP 3: 配布・DX 整備 ✅ 完了（2026-06-25・Bundle ID のみ HUMAN 判断待ち）
-
-**内容**: オープンソース化・採用支援の基盤整備。SPM semver タグ付与、README getting-started、自作コンポーネント計装手順、最小サンプル、堅牢化（ポート競合・多重起動・エラー応答）
-
-**実績（2026-06-25・inbox `2026-06-25-step3-distribution-dx.md` 消化）**: 
-- 外部利用者向けの配布パッケージング一式を整備。コア機能・実機対応は STEP 4 で完成済み・CI green
-- ポート 8888 競合時の挙動を `TestableServer.State` ＋ `onStateChange` で定義、`stop()` で graceful shutdown 実装
-
-**完了条件**:
-1. ✅ `docs/getting-started.md`：5分で自分のコンポーネントを計装可能な step-by-step ガイド（既知の罠①〜③明記）
-2. ✅ `docs/troubleshooting.md`：SETUP.md / README から独立化・拡充（ポート競合・多重起動・タイムアウト・Registry 共有もれ）
-3. ✅ GitHub Releases で semver タグ v0.1.0 を付与（https://github.com/ironasam43/TestableUIKit/releases/tag/v0.1.0）
-4. ✅ README に getting-started へのリンク追加（冒頭バナー＋ドキュメント表）
-5. ✅ Bundle ID 正式値確定 — `dev.plateworks.*` namespace に確定（project.yml 2箇所＋ci.yml simctl launch）
-6. ✅ TestableServer に graceful shutdown（`stop()`）・状態通知（`onStateChange`）・ポート競合検知（`.failed`）。XCTest +4（104 PASS）
-7. ✅ `Example/`：自作コンポーネント計装の最小サンプル（`MyToggleExample.swift` ＋ README）
-
-**対応設計書**: [Design 配布・DX](design.md) — STEP 3 で整備したドキュメント体系
+**Design reference**: [Design B](design.md#b-test-runner-promotion) — Test runner integration
 
 ---
 
-### STEP 4: 実機対応 ✅ 完了（推奨ルートに反し先行完走）
+### STEP 2: SwiftUI Component Support ✅ Complete (exceeded goals)
 
-**内容**: iOS Simulator から実 iPhone デバイスでのテスト実行に拡張。Provisioning Profile・Device UUID 管理・Wi-Fi 経由 IPC（localhost:8888 → Wi-Fi endpoint）
+**Description**: Migrate from CLI stub implementation (CLIDemoLoginButton) to real SwiftUI components (Button / Toggle / TextField, etc.). Make any View Testable via ViewModifier + Registry
 
-**実績（2026-06-23）**: 
-- ✅ 実機 iPhone `192.168.0.181` で Wi-Fi 越し IPC 疎通成立。`DemoApp` を `#if DEBUG` 分岐で `host: "0.0.0.0"` 公開
-- ✅ MCP 4 ツール（`ui_ping` / `ui_getState` / `ui_perform` / `ui_screenshot`）が **4/4 実機 e2e でクローズ**
-- ✅ `ui_screenshot` は経路A（`GET /screenshot` アプリ内キャプチャ）で Simulator 非依存に実機 PNG 取得確認（79,768 bytes・960×1440・PNG シグネチャ一致）
-- ✅ `TESTABLE_IPC_HOST` による接続先切替・実機ペアリング手順を SETUP.md / README に明文化
+**Actual results (2026-06-23)**: 
+- ✅ `.testable(_:)` ViewModifier implemented (`Sources/TestableUIKit/TestableView.swift`). Transparently wraps any SwiftUI View as Testable
+- ✅ TestableRegistry access via Environment key injection (migrated from EnvironmentObject in STEP 4 — exceeded original goal)
+- ✅ Diverse component instrumentation: 4 Core implementations — `CounterCore` / `TextInputCore` / `OnOffSwitchCore` / `RangeSliderCore` (exceeds original target of "3 or more")
+- ✅ Instrumentation tests demonstrated for Counter / TextInput / OnOffSwitch / RangeSlider (part of `swift test` 100 PASS)
 
-**完了条件**（達成状況）:
-1. ✅ Provisioning Profile / 実機ペアリング手順を SETUP.md に文書化
-2. ✅ `TestableServer` を `0.0.0.0` で listen（デバイスの IP:port で疎通）
-3. 🟡 接続先は `TESTABLE_IPC_HOST` で手動指定（DHCP 変動時の手順を明文化。UUID 自動検出は未実装だが運用でカバー）
-4. ⬜ GitHub Actions への実機接続統合は未（ローカル実機 e2e で実証・CI 自動化は範囲外）
-5. ✅ ローカルで実 iPhone でのテスト実行（4/4 ツール駆動）を確認
+**Completion conditions** (all achieved):
+1. ✅ Implement `.testable(_:)` ViewModifier. Transparently wraps any SwiftUI View as Testable
+2. ✅ Registry access via Environment key injection (singleton-free design surpassing the EnvironmentObject approach)
+3. ✅ DemoApp component count increased to 3 or more (4 Cores)
+4. ✅ Instrumentation tests demonstrated for various Views (Counter / TextInput / OnOffSwitch / RangeSlider)
 
-**注記（推奨ルートとの逆転）**: 当初は「STEP 4 後回し可」としていたが、実際は **STEP 4 を先行完走**し、STEP 3（配布・DX）が部分残りという順序逆転が起きた。実機 e2e の早期成立により価値実証は前倒しできた一方、外部公開に必要な STEP 3 が律速として残る形になった。
-
-**対応設計書**: [Design D](design.md#d-実機テスト対応) — 実機テスト対応
+**Design reference**: [Design C](design.md#c-swiftui-component-support) — SwiftUI component support
 
 ---
 
-## 4. 推奨ルート（当初計画）と実際の進行
+### STEP 3: Distribution & DX ✅ Complete (2026-06-25 / Bundle ID pending HUMAN decision)
 
-> **実際の進行（2026-06-23）**: STEP 1 ✅ → STEP 2 ✅（超過達成）→ **STEP 4 ✅（先行完走）** → STEP 3 ✅（2026-06-25 完了）。下記は当初計画。実際は実機対応（STEP 4）を価値実証のため前倒しで完走し、配布・DX（STEP 3）が外部公開の律速として残った。
+**Description**: Foundation for open-sourcing and adoption support. SPM semver tagging, README getting-started, custom component instrumentation guide, minimal sample, hardening (port conflicts, multiple instances, error responses)
+
+**Actual results (2026-06-25 / inbox `2026-06-25-step3-distribution-dx.md` consumed)**: 
+- Full distribution packaging for external users in place. Core functionality and physical device support completed in STEP 4 / CI green
+- Port 8888 conflict behavior defined via `TestableServer.State` + `onStateChange`; graceful shutdown implemented via `stop()`
+
+**Completion conditions**:
+1. ✅ `docs/getting-started.md`: Step-by-step guide for instrumenting your component in 5 minutes (known pitfalls ①–③ documented)
+2. ✅ `docs/troubleshooting.md`: Extracted and expanded from SETUP.md / README (port conflicts, multiple instances, timeouts, missing Registry sharing)
+3. ✅ semver tag v0.1.0 published via GitHub Releases (https://github.com/ironasam43/TestableUIKit/releases/tag/v0.1.0)
+4. ✅ README updated with link to getting-started (top banner + documentation table)
+5. ✅ Bundle ID finalized — confirmed as `dev.plateworks.*` namespace (project.yml 2 locations + ci.yml simctl launch)
+6. ✅ TestableServer gains graceful shutdown (`stop()`), state notifications (`onStateChange`), and port conflict detection (`.failed`). XCTest +4 (104 PASS)
+7. ✅ `Example/`: Minimal sample for custom component instrumentation (`MyToggleExample.swift` + README)
+
+**Design reference**: [Design Distribution & DX](design.md) — Documentation infrastructure built in STEP 3
+
+---
+
+### STEP 4: Physical Device Support ✅ Complete (completed ahead of schedule)
+
+**Description**: Extend from iOS Simulator to running tests on a real iPhone device. Provisioning Profile and Device UUID management, Wi-Fi IPC (localhost:8888 → Wi-Fi endpoint)
+
+**Actual results (2026-06-23)**: 
+- ✅ Wi-Fi IPC established with physical iPhone at `192.168.0.181`. `DemoApp` publishes on `host: "0.0.0.0"` behind `#if DEBUG`
+- ✅ All 4 MCP tools (`ui_ping` / `ui_getState` / `ui_perform` / `ui_screenshot`) **closed 4/4 physical device e2e**
+- ✅ `ui_screenshot` via route A (`GET /screenshot` in-app capture) confirmed to retrieve device PNG without Simulator dependency (79,768 bytes / 960×1440 / PNG signature match)
+- ✅ Connection switching via `TESTABLE_IPC_HOST` and physical device pairing procedure documented in SETUP.md / README
+
+**Completion conditions** (status):
+1. ✅ Provisioning Profile / physical device pairing procedure documented in SETUP.md
+2. ✅ `TestableServer` listens on `0.0.0.0` (reachable at device IP:port)
+3. 🟡 Connection target is manually specified via `TESTABLE_IPC_HOST` (procedure for DHCP changes documented; UUID auto-detection not implemented, covered operationally)
+4. ⬜ Physical device integration into GitHub Actions not done (validated via local physical device e2e; CI automation is out of scope)
+5. ✅ Confirmed test execution on real iPhone locally (4/4 tools driven)
+
+**Note (reversal from recommended route)**: Originally "STEP 4 can be deferred," but in practice **STEP 4 was completed ahead of schedule**, leaving STEP 3 (Distribution & DX) partially remaining — a reversal of order. Early physical device e2e validation moved value demonstration forward, while STEP 3, needed for external release, became the bottleneck.
+
+**Design reference**: [Design D](design.md#d-physical-device-testing-support) — Physical device test support
+
+---
+
+## 4. Recommended Route (original plan) vs Actual Progress
+
+> **Actual progress (2026-06-23)**: STEP 1 ✅ → STEP 2 ✅ (exceeded goals) → **STEP 4 ✅ (completed ahead of schedule)** → STEP 3 ✅ (completed 2026-06-25). The following describes the original plan. In practice, physical device support (STEP 4) was completed early for value validation, leaving Distribution & DX (STEP 3) as the bottleneck for external release.
 
 ```
-STEP 1（テストランナー昇格）✅
-    ↓ [土台完成]
-STEP 2（SwiftUI コンポーネント）✅ 超過達成
-    ↓ [本丸完成 = 他人が組み込める]
-    └─ 並行（一部）→ 堅牢化・簡易 STEP 3
+STEP 1 (Promote Test Runner) ✅
+    ↓ [foundation complete]
+STEP 2 (SwiftUI Components) ✅ exceeded goals
+    ↓ [main goal complete = others can integrate]
+    └─ parallel (partial) → hardening / lightweight STEP 3
     ↓
-STEP 3（配布・DX 整備）✅ 完了（2026-06-25）
-    ↓ [公開準備完成 = 誰でも使える]
-STEP 4（実機対応）✅ 先行完走（当初は「後回し可」）
+STEP 3 (Distribution & DX) ✅ complete (2026-06-25)
+    ↓ [release-ready = usable by anyone]
+STEP 4 (Physical Device Support) ✅ completed ahead of schedule (originally "can be deferred")
 ```
 
-**論理的根拠（手戻り最小）**:
+**Rationale (minimize rework)**:
 
-1. **STEP 1 最優先（土台）**: tap/setProperty schema が未確定だと STEP 2 コンポーネント計装時に仕様揺れのリスク。先に確定し安定した IPC I/F を確保
-2. **STEP 2（本丸）**: CLIDemoLoginButton PoC から実 SwiftUI に移行。この時点で「自分のコンポーネントに組み込める」達成
-3. **STEP 3（配布）**: STEP 2 で本丸完成後、ドキュメント・例・bundle ID 等の周辺整備。既に使える状態で DX polish
-4. **STEP 4（実機）**: Simulator で全機能動作確認後の拡張。Simulator で十分なら不要。後回し推奨
+1. **STEP 1 highest priority (foundation)**: Without finalizing the tap/setProperty schema, there is a risk of spec drift when instrumenting STEP 2 components. Finalize first to secure a stable IPC interface
+2. **STEP 2 (main goal)**: Migrate from CLIDemoLoginButton PoC to real SwiftUI. This achieves "can integrate into your own component"
+3. **STEP 3 (distribution)**: After STEP 2 completes the main goal, add surrounding infrastructure — docs, examples, bundle ID, etc. DX polish on top of a working product
+4. **STEP 4 (physical device)**: Extension after confirming all features work in the Simulator. Not needed if Simulator is sufficient. Recommended to defer
 
-この順序なら：
-- STEP 1-2 で「実用化」達成（他人が組み込める）
-- STEP 3 で「誰でも使える」
-- STEP 4 は「より使いやすく」（オプション）
+With this ordering:
+- STEP 1–2 achieve "productization" (others can integrate)
+- STEP 3 makes it "usable by anyone"
+- STEP 4 is "more convenient" (optional)
 
-逆順（STEP 4 先行等）だと、実機環境構築にコスト大のまま、ユースケースが明確でない段階で投資することになり inefficient。
+In reverse order (STEP 4 first, etc.), you invest heavily in physical device setup before use cases are clear — inefficient.
 
 ---
 
-## 参考資料
+## References
 
-- `docs/design.md` — M-4 テーマ候補 A/B/C/D の詳細仕様
-- `docs/history.md` — マイルストーン M-1〜M-5 の進捗サマリー
-- `docs/ipc-protocol.md` — HTTP API 仕様（STEP 1 で拡張予定）
-- `handoff.md` — プロジェクト作業メモ
-- `docs/oss-publication-roadmap.md` — GitHub OSS 公開整備ロードマップ（LICENSE・内部ファイル非追跡化・英語化・OSS 標準整備）
+- `docs/design.md` — Detailed specs for M-4 theme candidates A/B/C/D
+- `docs/history.md` — Progress summary for milestones M-1 through M-5
+- `docs/ipc-protocol.md` — HTTP API spec (to be extended in STEP 1)
+- `handoff.md` — Project work notes
+- `docs/oss-publication-roadmap.md` — GitHub OSS publication roadmap (LICENSE, untracking internal files, English translation, OSS standard preparation)

@@ -62,15 +62,15 @@ actor TestableRegistry {
 TestableUIKit/
 ├── Sources/
 │   ├── TestableUIKit/                 # Framework target
-│   │   ├── AnyTestable.swift         # Protocol / Registry / TestError 定義
+│   │   ├── AnyTestable.swift         # Protocol / Registry / TestError definitions
 │   │   ├── JSONValue.swift           # Wire format enum
 │   │   ├── TestableServer.swift      # HTTP server + PerformRequest
-│   │   └── LoginButtonCore.swift     # 共有状態 struct + 純粋コマンド処理関数（CLI・SwiftUI 共用）
+│   │   └── LoginButtonCore.swift     # Shared state struct + pure command-processing functions (shared by CLI and SwiftUI)
 │   └── TestableUIKitDemo/
-│       └── main.swift                # CLI executable エントリポイント
+│       └── main.swift                # CLI executable entry point
 ├── DemoApp/
-│   ├── DemoApp.swift                 # iOS App エントリポイント
-│   ├── LoginButton.swift             # SwiftUI 版 AnyTestable（@MainActor/@Published）
+│   ├── DemoApp.swift                 # iOS App entry point
+│   ├── LoginButton.swift             # SwiftUI AnyTestable implementation (@MainActor/@Published)
 │   └── Info.plist
 ├── TestableUIKitDemo.xcodeproj/      # Single xcodeproj for both targets
 ├── docs/
@@ -94,17 +94,17 @@ TestableUIKit/
 
 ## State Change Semantics
 
-全コマンドは実行後の `[String: JSONValue]` を返す（5キー固定）。
-コマンドロジックは `LoginButtonCore.swift` の純粋関数に集約され、CLI・SwiftUI 双方で共有される。
+All commands return `[String: JSONValue]` after execution (5 fixed keys).
+Command logic is consolidated in pure functions in `LoginButtonCore.swift`, shared by both CLI and SwiftUI.
 
-### 統一コマンド表（getState / tap / setProperty / setEnabled）
+### Unified Command Table (getState / tap / setProperty / setEnabled)
 
-| コマンド | parameters | 副作用 | CLI | iOS(SwiftUI) |
+| Command | parameters | Side effects | CLI | iOS(SwiftUI) |
 |---|---|---|---|---|
-| `getState` | なし | なし | ✅ | ✅ |
-| `tap` | なし | guard isEnabled（無効なら no-op）; isEnabled=false; title="Logged In" | ✅ | ✅ |
-| `setProperty` | `{"key": string, "value": <value>}` | 指定プロパティを更新 | ✅ | ✅ |
-| `setEnabled` | bool | isEnabled を直接設定 | ✅ | ✅ |
+| `getState` | none | none | ✅ | ✅ |
+| `tap` | none | guard isEnabled (no-op when disabled); isEnabled=false; title="Logged In" | ✅ | ✅ |
+| `setProperty` | `{"key": string, "value": <value>}` | Update specified property | ✅ | ✅ |
+| `setEnabled` | bool | Directly set isEnabled | ✅ | ✅ |
 
 ### getState (Query)
 
@@ -122,18 +122,18 @@ Executes action and returns resulting state.
 ```swift
 case "tap":
   var state = _state
-  applyTap(to: &state)   // LoginButtonCore の純粋関数（guard isEnabled; isEnabled=false; title="Logged In"）
+  applyTap(to: &state)   // Pure function in LoginButtonCore (guard isEnabled; isEnabled=false; title="Logged In")
   _state = state
   return describedState
 ```
 
-**tap 意味論（S2 確定版）**:
-- `guard state.isEnabled else { return }` — 無効なら no-op（実ユーザー同様に弾く）
-- `state.isEnabled = false` — 二重送信防止
-- `state.title = "Logged In"` — 可視なログイン結果（`@Published` 再描画の証拠）
+**tap Semantics (S2 finalized)**:
+- `guard state.isEnabled else { return }` — no-op when disabled (mirrors real-user behavior)
+- `state.isEnabled = false` — prevents double-submit
+- `state.title = "Logged In"` — visible login result (proof of `@Published` re-render)
 
-IPC `perform` は常にモデルへ到達（内省の前提＝常にコンポーネントを駆動できる）。  
-意味論ゲートはビュー層の `.disabled()` ではなくモデル側 `applyTap` が保持する。
+IPC `perform` always reaches the model (the precondition for introspection — the component can always be driven).  
+The semantic gate (guard isEnabled) is held by `applyTap` on the model side, not by the view-layer `.disabled()`.
 
 ### setProperty (Setter)
 
@@ -161,29 +161,29 @@ case "setEnabled":
 
 ## Testing Philosophy
 
-### 定義A vs 定義B — in-process 内省テスト vs XCUITest
+### Approach A vs Approach B — In-Process Introspection Testing vs XCUITest
 
-#### 定義A（in-process 内省テスト / TestableUIKit の背骨）
+#### Approach A (In-Process Introspection Testing — the backbone of TestableUIKit)
 
 ```
 IPC /perform tap
-  → TestableServer（background queue）
+  → TestableServer (background queue)
   → Task { @MainActor in await perform("tap") }
-  → applyTap（LoginButtonCore 純粋関数）
-  → @Published 状態変化（isEnabled=false / title="Logged In"）
-  → SwiftUI 再描画
+  → applyTap (pure function in LoginButtonCore)
+  → @Published state change (isEnabled=false / title="Logged In")
+  → SwiftUI re-render
 ```
 
-- **合流点は `perform` 一本**。CLI・SwiftUI の両実装がこの1点で合流する。
-- IPC は `.disabled()` ビューゲートを**通らない**（モデル直叩き）。
-- 意味論ゲート（guard isEnabled）は `applyTap` 内部（モデル側）に持たせる。
-- バックグラウンド由来の `@Published` 変更は `Task { @MainActor in }` ホップで SwiftUI 再描画に正しく載る。
+- **Single convergence point: `perform`**. Both CLI and SwiftUI implementations converge at this single point.
+- IPC **bypasses** the `.disabled()` view gate (it drives the model directly).
+- The semantic gate (guard isEnabled) lives inside `applyTap` (on the model side).
+- Background-initiated `@Published` changes correctly hop to SwiftUI re-renders via `Task { @MainActor in }`.
 
-#### 定義B（XCUITest / UIKit sendActions）
+#### Approach B (XCUITest / UIKit sendActions)
 
-- ユーザー入力イベント → UIKit/SwiftUI ビュー層 → `.disabled()` チェック → アクションハンドラ
-- TestableUIKit の領域外。XCUITest が担う。
-- 両者の棲み分け：定義A はコンポーネントの**内部状態**を直接検証、定義B は**ユーザー体験（ビュー層ゲート含む）**を検証。
+- User input event → UIKit/SwiftUI view layer → `.disabled()` check → action handler
+- Outside the scope of TestableUIKit. This is XCUITest's domain.
+- The two approaches are complementary: Approach A directly tests a component's **internal state**; Approach B tests **user experience (including view-layer gates)**.
 
 ---
 
@@ -198,13 +198,13 @@ GET /ping → {"status": "ok"}
 
 Ensures UI state responds to commands:
 ```bash
-POST /perform { testID, commandName: "getState" }  → 初期状態（isEnabled:true, title:"Log In"）
-POST /perform { testID, commandName: "tap" }       → 状態変化（isEnabled:false, title:"Logged In"）
-POST /perform { testID, commandName: "getState" }  → 変化の確認（isEnabled:false, title:"Logged In" が持続）
+POST /perform { testID, commandName: "getState" }  → initial state (isEnabled:true, title:"Log In")
+POST /perform { testID, commandName: "tap" }       → state change (isEnabled:false, title:"Logged In")
+POST /perform { testID, commandName: "getState" }  → confirm change (isEnabled:false, title:"Logged In" persists)
 ```
 
-**Phase B 実証の意義**: IPC tap → `@Published` 変化 → SwiftUI 再描画の全経路を 1 本で通す。  
-`title` の変化（"Log In" → "Logged In"）が再描画の最も明瞭な証拠となる。
+**Significance of Phase B**: Validates the full path from IPC tap → `@Published` change → SwiftUI re-render in a single test.  
+The change in `title` ("Log In" → "Logged In") is the clearest evidence of re-rendering.
 
 ---
 
@@ -266,102 +266,94 @@ grep -c "isa = PBXSourcesBuildPhase" TestableUIKitDemo.xcodeproj/project.pbxproj
 
 - [ ] **M-3**: Multi-device matrix testing (iOS 17–26 simulator variants)
 - [ ] **M-3**: xcodegen migration for pbxproj maintenance
-- [x] **M-5 Step 0**: コンポーネント2系統分裂解消（getState/tap/setProperty/setEnabled 統一 I/F・5キー describedState・LoginButtonCore DRY 抽出）
-- [x] **S2**: 定義A確定・最小実証（applyTap ログイン風遷移・合流点 perform 一本・XCUITest 棲み分け docs 記録）
-- [ ] **M-5**: run_test.py Phase B を CLI executable で完走（Simulator 検証）
+- [x] **M-5 Step 0**: Resolved component dual-implementation divergence (unified getState/tap/setProperty/setEnabled interface, 5-key describedState, LoginButtonCore DRY extraction)
+- [x] **S2**: Approach A finalized with minimal proof (applyTap login-style transition, single `perform` convergence point, XCUITest boundary documented)
+- [ ] **M-5**: Complete Phase B of run_test.py against CLI executable (Simulator verification)
 - [ ] **M-4**: CI/CD integration (GitHub Actions, GitLab CI examples)
 - [ ] **Beyond**: Real device support (not just Simulator)
 - [ ] **Beyond**: Async/await test composition helpers
 
 ---
 
-## M-4 テーマ候補（M-5 Step 0 で一部完了）
+## M-4 Theme Candidates (partially completed in M-5 Step 0)
 
-### A: setProperty 拡張 ✅（M-5 Step 0 で実装済み）
+### A: setProperty Extension ✅ (completed in M-5 Step 0)
 
-**概要**: `setProperty` コマンドで isHidden / alpha / backgroundColor を含む5プロパティをサポート
+**Overview**: `setProperty` command now supports all 5 properties including isHidden / alpha / backgroundColor
 
-**実装**: `LoginButtonCore.swift` の `applySetProperty` で対応済み。CLI・SwiftUI 共通。
+**Implementation**: Handled in `applySetProperty` in `LoginButtonCore.swift`. Shared by CLI and SwiftUI.
 
-**工数**: 実施済み
-
----
-
-### B: テストランナー統合
-
-**概要**: `run_test.py` を正式な test suite に昇格
-
-**現状**: Python スクリプト（Phase A/B/B-5 の integration テスト）
-
-**対象フレームワーク**:
-- pytest（Python テスト統合）
-- または XCTest（Swift ネイティブ連携）
-
-**CI 組み込み**: `xcodebuild test` に含める、または separate workflow ジョブ
-
-**工数**: 0.5〜1 セッション
+**Effort**: Completed
 
 ---
 
-### C: SwiftUI コンポーネント対応
+### B: Test Runner Promotion
 
-**概要**: CLI スタブ実装から実 SwiftUI コンポーネントへの移行
+**Overview**: Promote `run_test.py` to a formal test suite
 
-**現状（STEP 3 完了）**: `Counter`（testID: `scene.demo.counter`）が計装済み
+**Current state**: Python script (Phase A/B/B-5 integration tests)
 
-**目標**: 実 SwiftUI `Button` `Toggle` などを Testable にラップ
+**Target frameworks**:
+- pytest (Python test integration)
+- or XCTest (native Swift integration)
 
-**実装パターン（① 実装済み / ② 次タスク）**:
+**CI integration**: Include in `xcodebuild test` or as a separate workflow job
 
-#### ① ViewModifier による宣言的登録（STEP 3 実装済み）
+**Effort**: 0.5–1 session
 
-`Sources/TestableUIKit/TestableView.swift` で `.testable(_:)` 拡張メソッドを提供。
+---
+
+### C: SwiftUI Component Support
+
+**Overview**: Migrate from CLI stub implementation to real SwiftUI components
+
+**Current state (STEP 3 complete)**: `Counter` (testID: `scene.demo.counter`) is instrumented
+
+**Goal**: Wrap real SwiftUI `Button`, `Toggle`, etc. as Testable
+
+**Implementation patterns (① completed / ② next task)**:
+
+#### ① Declarative registration via ViewModifier (STEP 3 complete)
+
+Provides the `.testable(_:)` extension method in `Sources/TestableUIKit/TestableView.swift`.
 
 ```swift
-// コンポーネント作者が書くコード（手動 register 不要）
+// Component author's code (no manual register call needed)
 CounterView(counter: counter)
   .testable(counter)
 ```
 
-- `TestableRegistrationModifier`（`ViewModifier` 準拠）が View 表示開始時（`.task`）に
-  `await TestableRegistry.shared.register(testable)` を自動実行
-- **命名の注記**: `@testable` は Swift の `@testable import` で予約済みのため属性構文は使用不可。
-  メソッド構文（`.testable(_:)`）を採用して衝突を回避
-- `@available(iOS 15.0, macOS 13.0, *)` — `.task` 修飾子の最小要件に合わせた availability
+- `TestableRegistrationModifier` (conforming to `ViewModifier`) automatically calls
+  `await TestableRegistry.shared.register(testable)` when the View first appears (`.task`)
+- **Naming note**: `@testable` is reserved by Swift's `@testable import`, so attribute syntax cannot be used.
+  Method syntax (`.testable(_:)`) is used instead to avoid the conflict.
+- `@available(iOS 15.0, macOS 13.0, *)` — minimum availability aligned with the `.task` modifier requirement
 
-#### ② Environment キーによる Registry 注入（STEP 4 実装済み）
+#### ② Registry injection via Environment key (STEP 4 complete)
 
-グローバルシングルトン（`TestableRegistry.shared`）を廃止し、`EnvironmentKey` カスタムキー方式で
-Registry を View ツリーへ注入する方式を STEP 4 で実装。
+The global singleton (`TestableRegistry.shared`) has been removed. STEP 4 implements Registry injection into the View tree using a custom `EnvironmentKey`.
 
-**採用方式**: `EnvironmentKey` ＋ `@Environment(\.testableRegistry)`（`TestableEnvironment.swift`）
+**Approach**: `EnvironmentKey` + `@Environment(\.testableRegistry)` (`TestableEnvironment.swift`)
 
-**EnvironmentObject を採用しなかった理由**: `EnvironmentObject` は `ObservableObject`（`@MainActor` class）を
-要求するが、`TestableRegistry` は `actor` のため準拠不可。actor を維持したまま依存注入できる
-`EnvironmentKey` カスタムキー方式を選択した。
+**Why not EnvironmentObject**: `EnvironmentObject` requires `ObservableObject` (a `@MainActor` class), but `TestableRegistry` is an `actor` and cannot conform. The custom `EnvironmentKey` approach allows dependency injection while preserving the actor type.
 
-**注入アーキテクチャ（DemoApp）**:
-1. `RootView` が `@State private var registry = TestableRegistry()` で Registry を1つ生成
-2. `.environment(\.testableRegistry, registry)` で View ツリー全体へ注入
-3. `.task` 内で同じ `registry` を `TestableServer(port:registry:)` へ渡す
-4. `CounterView.testable(counter)` → `TestableRegistrationModifier` が `@Environment(\.testableRegistry)` で registry を受け取り自動 register
+**Injection architecture (DemoApp)**:
+1. `RootView` creates one `TestableRegistry` instance as `@State private var registry = TestableRegistry()`
+2. Injects it into the entire View tree via `.environment(\.testableRegistry, registry)`
+3. Passes the same `registry` to `TestableServer(port:registry:)` inside `.task`
+4. `CounterView.testable(counter)` → `TestableRegistrationModifier` reads `@Environment(\.testableRegistry)` and auto-registers
 
-**CLI（`TestableUIKitDemo/main.swift`）**: SwiftUI 環境を持たないため、ローカル `registry` を直接生成して
-`TestableServer(port:registry:)` へ注入し、コンポーネントを `await registry.register(button)` で直接登録。
+**CLI (`TestableUIKitDemo/main.swift`)**: No SwiftUI environment is available, so a local `registry` is created directly, passed to `TestableServer(port:registry:)`, and components are registered via `await registry.register(button)`.
 
-**defaultValue リスク**: `.environment()` 注入を忘れた View では、登録先が
-`TestableRegistryKey.defaultValue`（空の独立 Registry）となり、サーバの Registry と別物になる
-（サイレント失敗）。正しく注入すれば問題なし。
+**defaultValue risk**: If `.environment()` injection is missed, components register with `TestableRegistryKey.defaultValue` (an empty, isolated Registry), which is separate from the server's Registry (silent failure). Injecting correctly avoids this.
 
-**工数**: ① 完了（STEP 3）/ ② 完了（STEP 4）
+**Effort**: ① Complete (STEP 3) / ② Complete (STEP 4)
 
-**工数補追（loginButton 移行）**: `DemoApp` の `loginButton` コンポーネント（testID: `scene.demo.login.button`）も
-`.testable(loginButton)` ViewModifier へ移行。RootView の `.task` 内の手動 `await registry.register(loginButton)` を廃止し、
-Counter と登録方式を統一。実装完了（STEP 4.5）。
+**Effort addendum (loginButton migration)**: The `loginButton` component in `DemoApp` (testID: `scene.demo.login.button`) was migrated to the `.testable(loginButton)` ViewModifier. The manual `await registry.register(loginButton)` inside `.task` was removed, unifying the registration approach with Counter. Implementation complete (STEP 4.5).
 
-#### 計装済みコンポーネント一覧（STEP 2 時点）
+#### Instrumented Components (as of STEP 2)
 
-| コンポーネント | testID | 状態型 | コマンド | 実装タイミング |
+| Component | testID | State type | Commands | Implemented in |
 |---|---|---|---|---|
 | Counter | `scene.demo.counter` | `Int` / `Bool` | getState, increment, decrement, reset, setProperty | STEP 3 |
 | LoginButton | `scene.auth.loginButton` | `String` / `Bool` / `Double` | getState, tap, setProperty, setEnabled | STEP 4 |
@@ -369,229 +361,225 @@ Counter と登録方式を統一。実装完了（STEP 4.5）。
 | OnOffSwitch | `scene.demo.onOffSwitch` | `Bool` / `String` / `Bool` | getState, toggle, setProperty | STEP 2 |
 | RangeSlider | `scene.demo.rangeSlider` | `Double` x3 | getState, reset, setProperty | STEP 2 |
 
-**STEP 2 追加実証（2026-06-22）**: TextInput / OnOffSwitch / RangeSlider を新規計装。
-Core 層（純粋関数 → XCTest で 86 PASS）と SwiftUI View（.testable() 宣言的登録）で既存パターンに統一。
-pytest E2E 追加（test_swiftui_new_components.py にて疎通確認）。
+**STEP 2 additional validation (2026-06-22)**: TextInput, OnOffSwitch, and RangeSlider were newly instrumented. Core layer (pure functions → 86 XCTest PASS) and SwiftUI Views (.testable() declarative registration) follow the established pattern. pytest E2E tests added (connectivity verified in test_swiftui_new_components.py).
 
 ---
 
-### E: MCP ラッパー（STEP 1.5 実装済み・2026-06-22）
+### E: MCP Wrapper (STEP 1.5 implemented — 2026-06-22)
 
-**概要**: TestableUIKit の HTTP IPC（localhost:8888）を MCP tool で薄くラップし、Claude が実行中の iOS UI を直接駆動・describedState を構造化検査できるようにする独立 MCP サーバ。
+**Overview**: A standalone MCP server that thinly wraps TestableUIKit's HTTP IPC (localhost:8888) as MCP tools, allowing Claude to directly drive and inspect the describedState of a running iOS UI.
 
-**実装場所**: `mcp_server/`（TestableUIKit 同梱・ProjectDeck 非同居）
+**Implementation location**: `mcp_server/` (bundled with TestableUIKit; not co-located with ProjectDeck)
 
-#### 公開する MCP tool（4本）
+#### Exposed MCP Tools (4 tools)
 
-| MCP tool | ラップ先 | 返り値 | 用途 |
+| MCP tool | Wraps | Returns | Purpose |
 |---|---|---|---|
-| `ui_ping` | `GET /ping` | `{status: "ok"}` | サーバー死活確認 |
-| `ui_getState(testID)` | `POST /perform` getState | describedState 不透明 dict | 状態取得 → AI が期待値照合 |
-| `ui_perform(testID, command, params)` | `POST /perform` | describedState 不透明 dict | tap/setProperty/setEnabled 実行 |
-| `ui_screenshot` | `GET /screenshot`（一次）→ simctl フォールバック | `{image_base64, format}` | 崩れ一次判定（Simulator/実機両対応） |
+| `ui_ping` | `GET /ping` | `{status: "ok"}` | Server liveness check |
+| `ui_getState(testID)` | `POST /perform` getState | describedState opaque dict | State retrieval → AI asserts expected values |
+| `ui_perform(testID, command, params)` | `POST /perform` | describedState opaque dict | Execute tap/setProperty/setEnabled |
+| `ui_screenshot` | `GET /screenshot` (primary) → simctl fallback | `{image_base64, format}` | Initial layout check (works on Simulator and physical device) |
 
-#### 設計原則
+#### Design Principles
 
-- **薄いラッパー**: ビジネスロジック不持ち・HTTP 中継のみ
-- **describedState は不透明 dict**: キー固定を前提にしない（STEP2 前方互換）
-- **状態レス**: MCP サーバー自体は状態を持たない
-- **UIテスト時のみ起動**: 常駐しない構成（`python3 mcp_server/testableui_mcp.py` で起動）
+- **Thin wrapper**: No business logic — HTTP relay only
+- **describedState is an opaque dict**: No assumption of fixed keys (forward-compatible with STEP 2)
+- **Stateless**: The MCP server itself holds no state
+- **On-demand only**: Not always running (start with `python3 mcp_server/testableui_mcp.py`)
 
-#### ファイル構成
+#### File structure
 
 ```
 mcp_server/
-  ipc_helpers.py        # 純粋ヘルパー（外部依存なし・L1 テスト可）
-  testableui_mcp.py     # FastMCP サーバー実装
+  ipc_helpers.py        # Pure helpers (no external deps; L1 testable)
+  testableui_mcp.py     # FastMCP server implementation
   requirements.txt      # mcp>=1.0.0, requests>=2.28.0
 Tests/unit/
-  conftest.py           # autouse reset_state の no-op override
-  test_mcp_helpers.py   # L1 pytest 29テスト（Simulator 不要）
+  conftest.py           # no-op override for autouse reset_state
+  test_mcp_helpers.py   # L1 pytest 29 tests (no Simulator required)
 ```
 
-#### 起動方法
+#### How to Start
 
 ```bash
-# 前提: DemoApp が Simulator 上で起動済み（localhost:8888 リッスン中）
+# Prerequisite: DemoApp is running in the Simulator (listening on localhost:8888)
 cd projects/TestableUIKit
 .venv/bin/pip install -r mcp_server/requirements.txt
 python3 mcp_server/testableui_mcp.py
 ```
 
-#### 実現するテストループ
+#### Test Loop Enabled
 
 ```
-ビルド → Simulator 起動 → [AI] ui_perform で操作 → ui_getState で状態 assert
-       → ui_screenshot で崩れ一次判定 → 異常候補だけ人間（L5）へ
+Build → Launch Simulator → [AI] operate via ui_perform → assert state with ui_getState
+      → initial layout check via ui_screenshot → only anomaly candidates escalated to human (L5)
 ```
 
-#### スコープ外（将来課題）
+#### Out of Scope (Future Work)
 
-- `GET /components`（testID 一覧取得）: TestableServer 側に追加が必要→ STEP3 と合流
-- 補助 MCP（`run_tests(scheme)` 等）: Bash で代替可・優先度低
+- `GET /components` (retrieve testID list): requires addition on the TestableServer side → merge with STEP3
+- Auxiliary MCP (`run_tests(scheme)`, etc.): replaceable with Bash; low priority
 
 ---
 
-### E2: MCP サーバ Swift 化（SPM 公開・2026-06-24）
+### E2: MCP Server — Swift Rewrite (SPM distributable — 2026-06-24)
 
-**概要**: §E の Python 製 MCP サーバ（`mcp_server/`）を Swift（MCP swift-sdk）へ書き直し、SwiftPM で配布可能にした。`.venv`/Python 依存なしで `swift run` 一発で起動できる。単発コマンド系の 4 ツール・HTTP 契約・状態レス設計は Python 版と完全に同一（パリティ維持）。
+**Overview**: The Python MCP server (`mcp_server/`) from §E has been rewritten in Swift (using the MCP swift-sdk) and is now distributable via SwiftPM. It starts with a single `swift run` command, no `.venv`/Python dependency needed. The four single-command tools, HTTP contract, and stateless design are identical to the Python version (parity maintained).
 
-> **[実体追随・2026-07-04]** 本節が正（実装は `mcp-swift/`・Swift）。Python 版 `mcp_server/` は §E に記述したまま凍結された歴史的記録であり、廃止条件（下記）を満たすまでの併走用に残す。以後 MCP サーバの仕様変更は本節（および `docs/ipc-protocol.md`）を正本として更新する。
+> **[Implementation note — 2026-07-04]** This section is authoritative (implementation lives in `mcp-swift/`, Swift). The Python version in `mcp_server/` is frozen as a historical record from §E and remains as a parallel reference until the retirement conditions below are met. Going forward, MCP server spec changes are updated in this section (and `docs/ipc-protocol.md`) as the source of truth.
 
-**実装場所**: `mcp-swift/`（**独立 sub-package**。メイン `Package.swift` とは別パッケージ）
+**Implementation location**: `mcp-swift/` (**independent sub-package** — separate from the root `Package.swift`)
 
-#### なぜ独立 sub-package なのか（依存封じ込めの設計判断）
+#### Why an independent sub-package? (dependency isolation design decision)
 
-MCP swift-sdk（`github.com/modelcontextprotocol/swift-sdk`）は実測で次を要求する:
+The MCP swift-sdk requires the following (verified empirically):
 
-| 項目 | swift-sdk の要求 | メイン package | 衝突 |
+| Item | swift-sdk requirement | Main package | Conflict |
 |---|---|---|---|
-| swift-tools-version | 6.1（全バージョン 6.0+） | 5.9 | あり |
-| platform | iOS 16 / macOS 13 | iOS 15 / macOS 13 | iOS で衝突 |
-| transitive deps | swift-system / swift-log / swift-nio / eventsource ほか | なし（依存ゼロ） | あり |
+| swift-tools-version | 6.1 (all versions 6.0+) | 5.9 | Yes |
+| platform | iOS 16 / macOS 13 | iOS 15 / macOS 13 | iOS conflict |
+| transitive deps | swift-system / swift-log / swift-nio / eventsource etc. | None (zero deps) | Yes |
 
-SwiftPM は「使う product だけ」でなく**パッケージの依存グラフ全体を解決**するため、swift-sdk をメイン `Package.swift` に足すと library `TestableUIKit` の consumer まで iOS16・Swift6・swift-system 等へ巻き込む。これは差別化条件「**library 外部依存ゼロ・iOS15 維持**」を破壊する。
+SwiftPM resolves **the entire dependency graph of a package**, not just the products you use. Adding swift-sdk to the root `Package.swift` would drag all consumers of the `TestableUIKit` library into iOS 16, Swift 6, swift-system, and more. This would violate the core constraint: **zero library external dependencies + maintain iOS 15 support**.
 
-MCP サーバは TestableUIKit の Swift 型を import せず **HTTP IPC のみ**で通信するため、ソース共有が不要。したがって完全に独立した sub-package へ分離でき、メイン `Package.swift` は一切変更しない。
+The MCP server communicates exclusively via **HTTP IPC** and does not import TestableUIKit's Swift types, so no source sharing is needed. This allows complete separation into an independent sub-package, leaving the root `Package.swift` entirely unchanged.
 
-> **「library 依存ゼロ」の確認方法（consumer 視点）**: ルートで `swift build` するとメイン package の依存グラフだけが解決され swift-sdk は出現しない（`mcp-swift/` は別パッケージなので巻き込まれない）。`mcp-swift/` 側で `swift build` したときのみ swift-sdk が fetch される。両者のパッケージグラフが交わらないことが分離の成立条件。
+> **How to verify "zero library dependencies" (consumer perspective)**: Running `swift build` at the root resolves only the main package's dependency graph — swift-sdk does not appear (because `mcp-swift/` is a separate package and is not pulled in). swift-sdk is only fetched when running `swift build` inside `mcp-swift/`. The two package graphs must not intersect — that is the condition for isolation to hold.
 
-#### ターゲット構成
+#### Target structure
 
 ```
 mcp-swift/
-  Package.swift                              # tools 6.0 / macOS13 / swift-sdk 依存
+  Package.swift                              # tools 6.0 / macOS13 / swift-sdk dependency
   Sources/
-    TestableUIKitMCPCore/   IPCHelpers.swift # 純関数（外部依存ゼロ・XCTest 対象）
-                            Scenario.swift   # 宣言的シナリオモデル・パース・assert 評価（純関数）
-    TestableUIKitMCP/       main.swift       # executable（swift-sdk 依存はここのみ）
+    TestableUIKitMCPCore/   IPCHelpers.swift # Pure functions (no external deps; XCTest target)
+                            Scenario.swift   # Declarative scenario model, parsing, assert evaluation (pure functions)
+    TestableUIKitMCP/       main.swift       # executable (swift-sdk dependency is here only)
   Tests/
     TestableUIKitMCPCoreTests/IPCHelpersTests.swift  # L1 XCTest
-                              ScenarioTests.swift     # L1 XCTest（シナリオ）
+                              ScenarioTests.swift     # L1 XCTest (scenarios)
 ```
 
-- `TestableUIKitMCPCore`: host/port 解決・URL 構築・perform payload 組み立て・simctl コマンド生成・loopback 判定・**宣言的シナリオのパース/assert 評価/集約**。swift-sdk 非依存で機械検証する（`IPCHelpers` は Python `ipc_helpers.py` と 1:1、`Scenario`/`ScenarioEvaluator` は新規 Swift 版のみの機能）。
-- `TestableUIKitMCP`: MCP `Server` にツールを手動登録し `StdioTransport` で起動。HTTP 中継は `URLSession`。`ui_screenshot` は `GET /screenshot` 一次・loopback のみ simctl フォールバック（Python 版と同一経路）。`ui_runScenario` はシナリオの各ステップを `IPCHelpers.buildPerformPayload` 経由で `POST /perform` へ順送りし、応答を `ScenarioEvaluator.evaluateExpect` で判定する薄いオーケストレーション。
+- `TestableUIKitMCPCore`: host/port resolution, URL construction, perform payload building, simctl command generation, loopback detection, and **declarative scenario parsing/assert evaluation/aggregation**. Machine-verified without swift-sdk dependency (`IPCHelpers` maps 1:1 to Python `ipc_helpers.py`; `Scenario`/`ScenarioEvaluator` are new Swift-only features).
+- `TestableUIKitMCP`: Manually registers tools with MCP `Server` and starts via `StdioTransport`. HTTP relay uses `URLSession`. `ui_screenshot` uses `GET /screenshot` as primary path, with simctl fallback for loopback only (same path as Python version). `ui_runScenario` is a thin orchestration layer that forwards each scenario step to `POST /perform` via `IPCHelpers.buildPerformPayload` and evaluates responses with `ScenarioEvaluator.evaluateExpect`.
 
-#### 公開する MCP tool（5本）
+#### Exposed MCP Tools (5 tools)
 
-| MCP tool | ラップ先 | 返り値 | 用途 |
+| MCP tool | Wraps | Returns | Purpose |
 |---|---|---|---|
-| `ui_ping` | `GET /ping` | `{status: "ok"}` | サーバー死活確認 |
-| `ui_getState(testID)` | `POST /perform` getState | describedState 不透明 dict | 状態取得 → AI が期待値照合 |
-| `ui_perform(testID, command, params)` | `POST /perform` | describedState 不透明 dict | tap/setProperty/setEnabled 実行 |
-| `ui_screenshot` | `GET /screenshot`（一次）→ simctl フォールバック | `{image_base64, format}` | 崩れ一次判定（Simulator/実機両対応） |
-| `ui_runScenario(scenario)` | `POST /perform` を複数ステップぶん順送り | `ScenarioResult`（各ステップの pass/fail・assert 詳細・集計） | 宣言的な複数ステップ UI シナリオを 1 呼び出しで実行 |
+| `ui_ping` | `GET /ping` | `{status: "ok"}` | Server liveness check |
+| `ui_getState(testID)` | `POST /perform` getState | describedState opaque dict | State retrieval → AI asserts expected values |
+| `ui_perform(testID, command, params)` | `POST /perform` | describedState opaque dict | Execute tap/setProperty/setEnabled |
+| `ui_screenshot` | `GET /screenshot` (primary) → simctl fallback | `{image_base64, format}` | Initial layout check (works on Simulator and physical device) |
+| `ui_runScenario(scenario)` | `POST /perform` forwarded for multiple steps | `ScenarioResult` (per-step pass/fail, assert details, summary) | Execute a declarative multi-step UI scenario in a single call |
 
-**両輪の使い分け**:
-- **AI 動的シナリオ**（`ui_getState`→判断→`ui_perform`→`ui_screenshot`）: AI が都度 describedState を見て次の一手を判断する探索的な駆動。
-- **`ui_runScenario` 宣言的シナリオ**: 期待される操作列・期待値があらかじめ分かっている回帰確認を JSON 1 本で定義し、AI の都度判断を介さず決定的に実行・判定する。Example は `Example/scenarios/*.json` を参照。
+**When to use each**:
+- **AI Dynamic Scenarios** (`ui_getState` → decide → `ui_perform` → `ui_screenshot`): Exploratory driving where the AI reads `describedState` at each step to decide the next action.
+- **`ui_runScenario` Declarative Scenarios**: Define a known sequence of operations and expected values as a single JSON document. Execution is deterministic without per-step AI decisions — ideal for regression checks. See `Example/scenarios/*.json` for examples.
 
-**⚠️ action enum 同期に関する注記**: 宣言的シナリオで実行可能なコマンド（action）の列挙は `mcp-swift/Sources/TestableUIKitMCPCore/Scenario.swift` 内の `ScenarioAction` enum および `ScenarioAction.known` 配列が正本です。新たなコマンド（tap / increment など）を実装した際は、必ず以下の箇所を同期更新してください:
-- `ScenarioAction` の定数追加（例: `setEnabled = "setEnabled"`）
-- `ScenarioAction.known` 配列への追加
-- `Example/scenarios/scenario.schema.json` の `enum` リスト更新（AI が valid なアクションを認識するため）
-- `docs/ipc-protocol.md` の「Standard Commands」または「Component-Specific Commands」セクション更新（仕様文書）
-- `docs/scenario-authoring.md` の「action カタログ」更新（ユーザードキュメント）
+**⚠️ action enum sync note**: The authoritative enumeration of commands (actions) executable in declarative scenarios is the `ScenarioAction` enum and `ScenarioAction.known` array in `mcp-swift/Sources/TestableUIKitMCPCore/Scenario.swift`. When implementing a new command (tap / increment, etc.), always sync the following locations:
+- Add a constant to `ScenarioAction` (e.g., `setEnabled = "setEnabled"`)
+- Add to the `ScenarioAction.known` array
+- Update the `enum` list in `Example/scenarios/scenario.schema.json` (so AI recognizes valid actions)
+- Update the "Standard Commands" or "Component-Specific Commands" section in `docs/ipc-protocol.md` (spec doc)
+- Update the "action catalog" in `docs/scenario-authoring.md` (user doc)
 
-#### 起動方法
+#### How to Run
 
 ```bash
-# 前提: DemoApp が 実機 / Simulator 上で起動済み（:8888 リッスン中）
+# Prerequisite: DemoApp is running on a device/Simulator (listening on :8888)
 cd projects/TestableUIKit/mcp-swift
 swift run TestableUIKitMCP
-# 接続先上書き: TESTABLE_IPC_HOST=192.168.0.181 swift run TestableUIKitMCP
+# Override connection target: TESTABLE_IPC_HOST=192.168.0.181 swift run TestableUIKitMCP
 ```
 
-#### 検証状況
+#### Verification Status
 
-- **機械検証済み**: Core 純関数 XCTest 41 green。MCP stdio handshake（`initialize` → `tools/list` で 4 ツール登録確認、`tools/call ui_ping` がアプリ未起動時に `isError` で graceful fail）を実証。
-- **VQ/検収レーン**: 実アプリ応答の成功パス（起動中 DemoApp に対する 4 ツール live 駆動のパリティ）は実機/Simulator が前提のため verify-queue へ。
+- **Machine-verified**: Core pure function XCTest 41 green. MCP stdio handshake demonstrated (`initialize` → `tools/list` confirms 4 tools registered; `tools/call ui_ping` gracefully fails with `isError` when app is not running).
+- **VQ/review lane**: The success path for live app responses (4-tool live drive parity against a running DemoApp) requires a real device/Simulator and is deferred to verify-queue.
 
-#### Python 版（`mcp_server/`）の廃止条件
+#### Python version (`mcp_server/`) retirement conditions
 
-両者は当面**併走**し、次を満たした時点で Python 版を撤去する:
+Both versions will **run in parallel** until the following conditions are met, at which point the Python version will be retired:
 
-1. Swift 版の 4 ツール live 駆動パリティが実機/Simulator で確認できる（VQ クローズ）。
-2. CI に `cd mcp-swift && swift test` が組み込まれ green。
-3. README / SETUP の起動手順が Swift 版へ一本化される。
+1. Swift version 4-tool live drive parity is confirmed on a real device/Simulator (VQ closed).
+2. `cd mcp-swift && swift test` is integrated into CI and passing green.
+3. README / SETUP startup instructions are consolidated to the Swift version.
 
-廃止までは Python 版が正（live 実証済み）、Swift 版が新（机上＋protocol 検証済み）という位置づけ。
-
----
-
-### D: 実機テスト対応
-
-**概要**: iOS Simulator から実 iPhone での対応拡張
-
-**前提条件**:
-- Provisioning Profile セットアップ
-- 実 iPhone の UUID 管理
-- WiFi ネットワーク経由の IPC（localhost:8888 から Wi-Fi に拡張）
-
-**CI 構成**:
-- GitHub Actions に実機接続設定（App Store Connect キー等）
-- または local runner（実機接続マシン）
-
-**工数**: 1〜2 セッション（高コスト）
+Until retirement, the Python version is authoritative (live-tested), while the Swift version is newer (desk-verified + protocol-tested).
 
 ---
 
-### D コード下地（実装済み・2026-06-22）
+### D: Physical Device Testing Support
 
-純コード部分（LAN 越し IPC 対応の前提となるコード変更）を先行実装。
-物理ハードウェア・Provisioning・実機ペアリングはスコープ外（Human が後段で実施）。
+**Overview**: Extend support from iOS Simulator to real iPhone testing
 
-**サーバー側 `TestableServer` の bind 拡張**:
-- `init(port:host:registry:)` に `host` 引数追加（既定 `"127.0.0.1"` = ループバック限定）
-- `"0.0.0.0"` 指定で全インターフェース（LAN 公開）に bind
-- `NWParameters.requiredLocalEndpoint` でランタイム bind アドレスを制御
-- `public let host: String` プロパティとして外部公開
-- 後方互換: 既存の `TestableServer(port: 8888, registry: registry)` 呼び出しは引数省略で動作（デグレなし）
+**Prerequisites**:
+- Provisioning Profile setup
+- Physical iPhone UUID management
+- IPC over Wi-Fi network (extending from localhost:8888 to Wi-Fi)
 
-**後方互換注意点**: 旧実装は print のみ "localhost" と表示し実際は全インターフェースバインドだった。
-本実装でランタイムも loopback 限定（`127.0.0.1`）に統一。接続元は全て localhost 系のため実被害なし。よりセキュアな狭化として意図に合致。
+**CI configuration**:
+- GitHub Actions with physical device configuration (App Store Connect key, etc.)
+- Or a local runner (machine with physical device connected)
 
-**クライアント側の接続先設定可能化**:
-- `ipc_helpers.py`: `resolve_ipc_host_port(env:)` 追加（env 引数で L1 テスト可能な純粋関数）
-  - `TESTABLE_IPC_HOST` 環境変数で接続先ホストを上書き（既定: `localhost`）
-  - `TESTABLE_IPC_PORT` 環境変数で接続先ポートを上書き（既定: `8888`）
-  - 不正なポート文字列は既定値へフォールバック
-- `mcp_server/testableui_mcp.py`: 起動時に env から host/port を解決して `_IPC_BASE` を生成
-- `Tests/conftest.py` / `run_test.py`: `resolve_ipc_host_port()` 経由で BASE_URL を動的生成
+**Effort**: 1–2 sessions (high cost)
 
-**L1 テスト追加**:
-- Swift: `Tests/TestableUIKitTests/TestableServerTests.swift`（10 テスト: 既定値・LAN 公開 host・後方互換）
-- Python: `Tests/unit/test_mcp_helpers.py` の `TestResolveIpcHostPort`（13 テスト）
+---
+
+### D Code Foundation (Implemented — 2026-06-22)
+
+The pure code changes required for LAN-based IPC support have been implemented ahead of time. Physical hardware, Provisioning, and device pairing are out of scope (to be performed by a human in a later step).
+
+**Server-side `TestableServer` bind extension**:
+- Added `host` argument to `init(port:host:registry:)` (default `"127.0.0.1"` = loopback only)
+- Specifying `"0.0.0.0"` binds to all interfaces (LAN-accessible)
+- Runtime bind address is controlled via `NWParameters.requiredLocalEndpoint`
+- Exposed as `public let host: String` property
+- Backward compatible: existing `TestableServer(port: 8888, registry: registry)` calls work without the argument (no regression)
+
+**Backward compatibility note**: The previous implementation only printed "localhost" but actually bound to all interfaces. This implementation correctly restricts runtime binding to loopback (`127.0.0.1`). Since all clients connect from localhost, there is no observable impact. This is an intentional narrowing for improved security.
+
+**Client-side connection target overriding**:
+- `ipc_helpers.py`: added `resolve_ipc_host_port(env:)` (pure function — L1 testable via env argument)
+  - `TESTABLE_IPC_HOST` environment variable overrides the connection host (default: `localhost`)
+  - `TESTABLE_IPC_PORT` environment variable overrides the connection port (default: `8888`)
+  - Invalid port strings fall back to the default value
+- `mcp_server/testableui_mcp.py`: resolves host/port from env at startup and generates `_IPC_BASE`
+- `Tests/conftest.py` / `run_test.py`: dynamically generates BASE_URL via `resolve_ipc_host_port()`
+
+**L1 tests added**:
+- Swift: `Tests/TestableUIKitTests/TestableServerTests.swift` (10 tests: default values, LAN-public host, backward compatibility)
+- Python: `TestResolveIpcHostPort` in `Tests/unit/test_mcp_helpers.py` (13 tests)
 - DoD: `swift test` 96 PASS / pytest unit 42 PASS / commit `7d81160`
 
-**残余（VQ 送り）**: 実機 Wi-Fi 越し実通信の確認（実 iPhone ペアリング後）→ `docs/verify-queue.md` 参照
+**Remaining (deferred to VQ)**: Verify real Wi-Fi communication from a physical iPhone after pairing → see `docs/verify-queue.md`
 
 ---
 
-### D 拡張: `ui_screenshot` 実機対応 — provider 注入方式（実装済み・2026-06-23）
+### D Extension: `ui_screenshot` Physical Device Support — Provider Injection Pattern (Implemented — 2026-06-23)
 
-**背景**: MCP live PoC（3/4 ツール実機駆動）で `ui_screenshot` のみ `simctl io booted screenshot`（Simulator 専用）依存で実機不可と判明。
+**Background**: During the MCP live PoC (3/4 tools driven on a physical device), `ui_screenshot` was the only tool that depended on `simctl io booted screenshot` (Simulator-only) and could not run on a real device.
 
-**採用方式（経路A）**: アプリ内キャプチャ → IPC 返却。新規エンドポイント `GET /screenshot` を `TestableServer` に追加し、アプリが自身のルート view を PNG レンダリング → base64 で HTTP 返却。`ui_screenshot()` はそのエンドポイントを一次経路として叩くだけにする。
+**Approach (Route A)**: In-app capture → IPC response. A new `GET /screenshot` endpoint is added to `TestableServer`; the app renders its root view as PNG and returns it base64-encoded over HTTP. `ui_screenshot()` simply calls this endpoint as the primary path.
 
-**screenshotProvider 注入設計**:
-- `TestableServer(port:host:registry:screenshotProvider:)` に optional な `screenshotProvider: (@MainActor () async -> Data?)?` を追加（既定 nil・後方互換維持）
-- `GET /screenshot` は provider を呼び出し base64 化して `{"image_base64":..., "format":"png"}` を返す。未注入時は `{"error":"screenshotProvider not configured"}` を返す（503）
-- ライブラリは closure の中身を一切知らない（UIKit 非依存・状態レス維持）
-- `DemoApp.swift` が key window キャプチャ closure（`UIGraphicsImageRenderer` ＋ `UIApplication.shared.connectedScenes` ルート view）を生成して注入（UIKit 依存は app 側に閉じる）
+**screenshotProvider injection design**:
+- Added optional `screenshotProvider: (@MainActor () async -> Data?)?` to `TestableServer(port:host:registry:screenshotProvider:)` (default nil; backward compatible)
+- `GET /screenshot` calls the provider, base64-encodes the result, and returns `{"image_base64":..., "format":"png"}`. Returns `{"error":"screenshotProvider not configured"}` (503) when not injected
+- The library has no knowledge of the closure internals (UIKit-free; stateless preserved)
+- `DemoApp.swift` creates and injects the key-window capture closure (`UIGraphicsImageRenderer` + root view from `UIApplication.shared.connectedScenes`), keeping UIKit dependencies on the app side
 
-**Python 側 `ui_screenshot()` フォールバック戦略**:
-- 一次経路: `GET /screenshot`（Simulator/実機共通）
-- フォールバック: host が loopback（`127.0.0.1` / `localhost`）かつ `/screenshot` endpoint が 4xx/5xx または接続失敗の場合のみ `simctl io booted screenshot` へ退避（Simulator での後方互換）
-- フォールバック判定は純粋関数（`is_loopback_host(host)`、`mcp_server/ipc_helpers.py`）で L1 テスト可能
+**Python-side `ui_screenshot()` fallback strategy**:
+- Primary path: `GET /screenshot` (works on both Simulator and real device)
+- Fallback: only when the host is loopback (`127.0.0.1` / `localhost`) and the `/screenshot` endpoint returns 4xx/5xx or fails to connect, fall back to `simctl io booted screenshot` (backward compatibility for Simulator)
+- Fallback detection is a pure function (`is_loopback_host(host)` in `mcp_server/ipc_helpers.py`), testable at L1
 
-**L1 テスト追加**:
-- Swift: stub provider を注入した `TestableServer` に `GET /screenshot` を叩き、base64 を含む JSON が返ること（4 テスト）
-- Python: `build_screenshot_url`・フォールバック判定・passthrough（17 テスト追加）
+**L1 tests added**:
+- Swift: Hitting `GET /screenshot` on a `TestableServer` with a stub provider injected returns JSON containing base64 (4 tests)
+- Python: `build_screenshot_url`, fallback detection, passthrough (17 tests added)
 - DoD: `swift test` 100 PASS / pytest 59 PASS / commit `78716fd`
 
-**残余（VQ 送り）**: 実機（iPhone `192.168.0.181`）への DemoApp 再インストール後、`TESTABLE_IPC_HOST=192.168.0.181` で `ui_screenshot` を呼び実 PNG base64 が取得できるか確認 → `docs/verify-queue.md` 参照
+**Remaining (deferred to VQ)**: After reinstalling DemoApp on a real device (iPhone `192.168.0.181`), verify that calling `ui_screenshot` with `TESTABLE_IPC_HOST=192.168.0.181` returns a real PNG base64 → see `docs/verify-queue.md`
 
 ---
 

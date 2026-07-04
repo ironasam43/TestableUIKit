@@ -2,22 +2,21 @@
 //  Scenario.swift
 //  TestableUIKitMCPCore
 //
-//  宣言的 UI シナリオ（ui_runScenario）の純粋モデル・パース・assert 評価。
-//  HTTP / swift-sdk に一切依存しない Foundation only の層。
-//  main.swift（executable）はここでパースしたステップ列を POST /perform で
-//  順に送信し、返却 describedState を evaluateExpect に通すだけの薄い
-//  オーケストレーションに徹する。
+//  Pure model, parsing, and assert evaluation for declarative UI scenarios (ui_runScenario).
+//  Foundation-only layer with no dependency on HTTP or swift-sdk.
+//  main.swift (executable) performs only thin orchestration: it sends parsed steps via
+//  POST /perform in order and passes the returned describedState to evaluateExpect.
 //
-//  シナリオ形式:
+//  Scenario format:
 //    {
 //      "name": "counter-flow",
 //      "steps": [
 //        {
-//          "action": "tap",            // 実行コマンド名（getState/tap/setProperty/setEnabled等。
-//                                       // /perform の commandName にそのまま渡す）
+//          "action": "tap",            // command to execute (getState/tap/setProperty/setEnabled, etc.)
+//                                       // passed directly to /perform as commandName
 //          "testID": "scene.demo.counter",
-//          "parameters": { ... },      // 省略可
-//          "expect": { "count": 1 }    // 省略可。describedState とキー単位で突合
+//          "parameters": { ... },      // optional
+//          "expect": { "count": 1 }    // optional; matched key-by-key against describedState
 //        }
 //      ]
 //    }
@@ -26,14 +25,14 @@
 import Foundation
 
 // ================================================================
-// JSONValue — 汎用 JSON 値（Codable・Foundation only）
+// JSONValue — generic JSON value (Codable, Foundation only)
 // ================================================================
 
-/// シナリオの parameters / expect / describedState を表現する汎用 JSON 値。
+/// Generic JSON value representing scenario parameters / expect / describedState.
 ///
-/// メインライブラリ（TestableUIKit）にも同名の型があるが、本パッケージは
-/// 意図的にメインライブラリを import しない独立 sub-package のため、
-/// ここで最小限の互換型を自前定義する。
+/// The main library (TestableUIKit) defines a same-named type, but this package
+/// intentionally does not import the main library (independent sub-package), so a
+/// minimal compatible type is defined here.
 public indirect enum JSONValue: Equatable, Sendable {
   case null
   case bool(Bool)
@@ -60,7 +59,7 @@ extension JSONValue: Codable {
       self = .object(o)
     } else {
       throw DecodingError.dataCorruptedError(
-        in: container, debugDescription: "サポートされていない JSON 値")
+        in: container, debugDescription: "Unsupported JSON value type")
     }
   }
 
@@ -78,7 +77,7 @@ extension JSONValue: Codable {
 }
 
 extension JSONValue {
-  /// `.object` の場合のみ辞書を返す（それ以外は nil）。
+  /// Returns the dictionary when the value is `.object`; nil otherwise.
   public var objectValue: [String: JSONValue]? {
     if case .object(let o) = self { return o }
     return nil
@@ -86,17 +85,17 @@ extension JSONValue {
 }
 
 // ================================================================
-// ScenarioAction — 既知コマンドの定数化
+// ScenarioAction — known command constants
 // ================================================================
 
-/// ui_runScenario で実行可能な既知コマンド一覧。
-/// 各値は `/perform` エンドポイントの commandName にそのまま渡される。
+/// Known commands available in ui_runScenario.
+/// Each value is passed directly to the /perform endpoint as commandName.
 public enum ScenarioAction {
-  /// ユニバーサルコマンド（すべてのテスト対象に有効）
+  /// Universal commands (valid for all testable components).
   public static let getState = "getState"
   public static let setProperty = "setProperty"
 
-  /// コンポーネント固有コマンド
+  /// Component-specific commands.
   public static let tap = "tap"
   public static let increment = "increment"
   public static let decrement = "decrement"
@@ -105,17 +104,17 @@ public enum ScenarioAction {
   public static let clear = "clear"
   public static let setEnabled = "setEnabled"
 
-  /// 全既知コマンドの配列（schema 定義・テスト用）。
+  /// Array of all known commands (for schema definitions and tests).
   public static let known = [
     getState, setProperty, tap, increment, decrement, reset, toggle, clear, setEnabled,
   ]
 }
 
 // ================================================================
-// シナリオモデル（Codable）
+// Scenario model (Codable)
 // ================================================================
 
-/// シナリオ 1 ステップ。
+/// One step in a scenario.
 public struct ScenarioStep: Codable, Equatable, Sendable {
   public let action: String
   public let testID: String
@@ -133,7 +132,7 @@ public struct ScenarioStep: Codable, Equatable, Sendable {
   }
 }
 
-/// 宣言的シナリオ全体（複数ステップの線形列）。
+/// A complete declarative scenario (linear sequence of steps).
 public struct Scenario: Codable, Equatable, Sendable {
   public let name: String
   public let steps: [ScenarioStep]
@@ -145,7 +144,7 @@ public struct Scenario: Codable, Equatable, Sendable {
 }
 
 // ================================================================
-// ScenarioParser — JSON → Scenario（純粋）
+// ScenarioParser — JSON → Scenario (pure)
 // ================================================================
 
 public enum ScenarioParseError: Error, CustomStringConvertible {
@@ -153,18 +152,18 @@ public enum ScenarioParseError: Error, CustomStringConvertible {
 
   public var description: String {
     switch self {
-    case .invalidUTF8: return "シナリオ JSON の UTF-8 デコードに失敗しました"
+    case .invalidUTF8: return "Failed to decode scenario JSON as UTF-8"
     }
   }
 }
 
 public enum ScenarioParser {
-  /// JSON データからシナリオをパースする。
+  /// Parses a scenario from JSON data.
   public static func parse(json data: Data) throws -> Scenario {
     return try JSONDecoder().decode(Scenario.self, from: data)
   }
 
-  /// JSON 文字列からシナリオをパースする。
+  /// Parses a scenario from a JSON string.
   public static func parse(jsonString: String) throws -> Scenario {
     guard let data = jsonString.data(using: .utf8) else {
       throw ScenarioParseError.invalidUTF8
@@ -174,10 +173,10 @@ public enum ScenarioParser {
 }
 
 // ================================================================
-// assert 評価結果・ステップ結果・シナリオ結果（Codable）
+// Assert result, step result, scenario result (Codable)
 // ================================================================
 
-/// 1 キーぶんの assert 判定結果。
+/// Assert evaluation result for a single key.
 public struct AssertResult: Codable, Equatable, Sendable {
   public let key: String
   public let expected: JSONValue
@@ -192,18 +191,18 @@ public struct AssertResult: Codable, Equatable, Sendable {
   }
 }
 
-/// 1 ステップぶんの実行結果。
+/// Execution result for a single step.
 public struct StepResult: Codable, Equatable, Sendable {
   public let index: Int
   public let action: String
   public let testID: String
-  /// /perform 呼び出し自体（HTTP・コマンド実行）が成功したか。
+  /// Whether the /perform call itself (HTTP + command execution) succeeded.
   public let success: Bool
-  /// success == false の場合のエラーメッセージ。
+  /// Error message when success == false.
   public let error: String?
   public let describedState: [String: JSONValue]?
   public let asserts: [AssertResult]
-  /// success かつ全 assert が pass の場合のみ true。
+  /// true only when success is true and all asserts pass.
   public let passed: Bool
 
   public init(
@@ -221,7 +220,7 @@ public struct StepResult: Codable, Equatable, Sendable {
   }
 }
 
-/// シナリオ全体の実行結果。
+/// Execution result for an entire scenario.
 public struct ScenarioResult: Codable, Equatable, Sendable {
   public let name: String
   public let stepResults: [StepResult]
@@ -241,20 +240,20 @@ public struct ScenarioResult: Codable, Equatable, Sendable {
 }
 
 // ================================================================
-// ScenarioEvaluator — 純粋 assert 評価・集約
+// ScenarioEvaluator — pure assert evaluation and aggregation
 // ================================================================
 
 public enum ScenarioEvaluator {
 
-  /// 数値比較の許容誤差。
+  /// Tolerance for floating-point number comparisons.
   static let numberEpsilon = 1e-9
 
-  /// `expect` 辞書と実際の describedState を突合し AssertResult 配列を返す。
+  /// Matches the `expect` dictionary against the actual describedState and returns AssertResult array.
   ///
-  /// - expected に列挙されたキーのみを判定する（actual 側の余剰キーは無視）。
-  /// - actual にキーが存在しない場合は fail。
-  /// - number は微小誤差を許容して比較、それ以外は完全一致。
-  /// - キー順は決定的（expected のキーをソートした順）。
+  /// - Only keys listed in expected are evaluated (surplus keys in actual are ignored).
+  /// - Missing keys in actual result in a fail.
+  /// - Numbers are compared with epsilon tolerance; all other types require exact equality.
+  /// - Key order is deterministic (sorted keys from expected).
   public static func evaluateExpect(
     expected: [String: JSONValue],
     actual: [String: JSONValue]
@@ -267,7 +266,7 @@ public enum ScenarioEvaluator {
     }
   }
 
-  /// JSONValue 同士の等価判定（number のみ epsilon 許容）。
+  /// Equality check for JSONValue pairs (epsilon tolerance for numbers only).
   static func jsonValuesEqual(_ a: JSONValue, _ b: JSONValue) -> Bool {
     switch (a, b) {
     case (.null, .null):
@@ -289,7 +288,7 @@ public enum ScenarioEvaluator {
     }
   }
 
-  /// ステップ結果列から pass/fail を集約する（純粋関数）。
+  /// Aggregates step results into pass/fail counts (pure function).
   public static func aggregate(
     stepResults: [StepResult]
   ) -> (passed: Bool, passCount: Int, failCount: Int) {
@@ -298,7 +297,7 @@ public enum ScenarioEvaluator {
     return (failCount == 0, passCount, failCount)
   }
 
-  /// ステップ結果列からシナリオ全体の結果を組み立てる。
+  /// Builds an overall ScenarioResult from step results.
   public static func buildScenarioResult(
     name: String, stepResults: [StepResult]
   ) -> ScenarioResult {

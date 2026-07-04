@@ -2,8 +2,8 @@
 //  ScenarioTests.swift
 //  TestableUIKitMCPCoreTests
 //
-//  L1 テスト: 宣言的シナリオ（ui_runScenario）のパース・assert 評価・集約。
-//  HTTP / swift-sdk / Simulator 不要（純粋関数のみ）。
+//  L1 tests: parsing, assert evaluation, and aggregation for declarative scenarios (ui_runScenario).
+//  No HTTP / swift-sdk / Simulator required (pure functions only).
 //
 
 import XCTest
@@ -67,7 +67,7 @@ final class ScenarioParserTests: XCTestCase {
   }
 
   func test_parse_missing_required_field_throws() {
-    let json = #"{ "steps": [] }"#  // name 欠落
+    let json = #"{ "steps": [] }"#  // missing name
     XCTAssertThrowsError(try ScenarioParser.parse(jsonString: json))
   }
 
@@ -194,7 +194,7 @@ final class AggregateTests: XCTestCase {
 }
 
 // ================================================================
-// JSONValue round-trip（Codable）
+// JSONValue round-trip (Codable)
 // ================================================================
 
 final class JSONValueCodableTests: XCTestCase {
@@ -217,16 +217,16 @@ final class JSONValueCodableTests: XCTestCase {
 }
 
 // ================================================================
-// ScenarioAction（既知コマンド定数）
+// ScenarioAction (known command constants)
 // ================================================================
 
 final class ScenarioActionTests: XCTestCase {
   func test_knownActionsContainsExpectedValues() {
-    // ユニバーサルコマンド
+    // Universal commands
     XCTAssertTrue(ScenarioAction.known.contains(ScenarioAction.getState))
     XCTAssertTrue(ScenarioAction.known.contains(ScenarioAction.setProperty))
 
-    // コンポーネント固有コマンド
+    // Component-specific commands
     XCTAssertTrue(ScenarioAction.known.contains(ScenarioAction.tap))
     XCTAssertTrue(ScenarioAction.known.contains(ScenarioAction.increment))
     XCTAssertTrue(ScenarioAction.known.contains(ScenarioAction.decrement))
@@ -238,7 +238,7 @@ final class ScenarioActionTests: XCTestCase {
 
   func test_knownActionsAreUnique() {
     let unique = Set(ScenarioAction.known)
-    XCTAssertEqual(unique.count, ScenarioAction.known.count, "ScenarioAction.known に重複があります")
+    XCTAssertEqual(unique.count, ScenarioAction.known.count, "ScenarioAction.known contains duplicates")
   }
 
   func test_knownActionsHaveCorrectValues() {
@@ -254,7 +254,7 @@ final class ScenarioActionTests: XCTestCase {
   }
 
   func test_knownActionsCountMatchesExpectation() {
-    // 9 つのコマンドが定義されていることを確認
+    // Verify that exactly 9 commands are defined
     XCTAssertEqual(ScenarioAction.known.count, 9)
   }
 }

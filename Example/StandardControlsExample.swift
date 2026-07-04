@@ -1,11 +1,11 @@
 // StandardControlsExample.swift
 //
-// Tier 2（標準 SwiftUI コントロールの即計装 API）の最小サンプル。
-// Toggle / TextField / Stepper / Slider / Button の 5 種を、通常の SwiftUI と同じ感覚で
-// 書くだけで自動計装できます（ブリッジ class も Core 値型も不要）。
+// Minimal sample for the Tier 2 API (instant instrumentation of standard SwiftUI controls).
+// Toggle / TextField / Stepper / Slider / Button — just write them the same way as normal SwiftUI
+// and they are automatically instrumented (no bridge class or Core value type needed).
 //
-// ※ このファイルは Swift Package のビルド対象外（Example/ は Sources/ の外）です。
-//    自分のプロジェクトへコピペして使ってください。実行手順は docs/getting-started.md 参照。
+// Note: This file is not part of the Swift Package build (Example/ is outside Sources/).
+//       Copy it into your own project. See docs/getting-started.md for instructions.
 
 import SwiftUI
 import TestableUIKit
@@ -15,25 +15,25 @@ struct StandardControlsView: View {
   @State private var name = ""
   @State private var quantity = 0
   @State private var volume = 0.5
-  @State private var tapMessage = "未タップ"
+  @State private var tapMessage = "Not tapped"
 
   var body: some View {
     VStack(spacing: 16) {
-      // Toggle: コマンド = toggle / setProperty（describe: isOn）
-      TestableToggle("通知", isOn: $isOn, id: "controls.toggle")
+      // Toggle: commands = toggle / setProperty (describe: isOn)
+      TestableToggle("Notifications", isOn: $isOn, id: "controls.toggle")
 
-      // TextField: コマンド = setProperty（describe: text）
-      TestableTextField("名前", text: $name, id: "controls.textField")
+      // TextField: commands = setProperty (describe: text)
+      TestableTextField("Name", text: $name, id: "controls.textField")
 
-      // Stepper: コマンド = increment / decrement / setProperty（describe: value）
-      TestableStepper("数量: \(quantity)", value: $quantity, id: "controls.stepper")
+      // Stepper: commands = increment / decrement / setProperty (describe: value)
+      TestableStepper("Quantity: \(quantity)", value: $quantity, id: "controls.stepper")
 
-      // Slider: コマンド = setProperty（describe: value）
+      // Slider: commands = setProperty (describe: value)
       TestableSlider(value: $volume, in: 0...1, id: "controls.slider")
 
-      // Button: コマンド = tap（describe: tapCount）
-      TestableButton("送信", id: "controls.button") {
-        tapMessage = "タップされました"
+      // Button: commands = tap (describe: tapCount)
+      TestableButton("Submit", id: "controls.button") {
+        tapMessage = "Tapped"
       }
 
       Text(tapMessage)
@@ -42,7 +42,7 @@ struct StandardControlsView: View {
   }
 }
 
-// MARK: - アプリ配線（Registry を 1 つ生成し、サーバと View ツリーの両方へ注入）
+// MARK: - App wiring (create one Registry, inject it into both the server and the View tree)
 
 @main
 struct StandardControlsApp: App {

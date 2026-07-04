@@ -1,7 +1,7 @@
 import XCTest
 @testable import TestableUIKit
 
-// MARK: - テスト用最小 AnyTestable 実装
+// MARK: - Minimal AnyTestable implementation for tests
 
 private final class MockTestable: AnyTestable, @unchecked Sendable {
   let testID: String
@@ -21,7 +21,7 @@ private final class MockTestable: AnyTestable, @unchecked Sendable {
 
 final class TestableRegistryTests: XCTestCase {
 
-  // register → find round-trip: 登録した testable が testID で取得できる
+  // register → find round-trip: a registered testable must be retrievable by testID
   func testRegisterAndFind() async throws {
     let registry = TestableRegistry()
     let id = "test.registry.roundtrip"
@@ -30,20 +30,20 @@ final class TestableRegistryTests: XCTestCase {
     await registry.register(mock)
     let found = await registry.find(id: id)
 
-    XCTAssertNotNil(found, "登録済み testable は find で取得できる")
-    XCTAssertEqual(found?.testID, id, "取得した testable の testID が一致する")
+    XCTAssertNotNil(found, "A registered testable must be retrievable via find")
+    XCTAssertEqual(found?.testID, id, "The testID of the retrieved testable must match")
   }
 
-  // 未登録 ID は nil を返す
+  // An unregistered ID must return nil
   func testFindUnregisteredReturnsNil() async throws {
     let registry = TestableRegistry()
     let id = "test.registry.nonexistent.\(UUID().uuidString)"
     let found = await registry.find(id: id)
 
-    XCTAssertNil(found, "未登録の testID は nil を返す")
+    XCTAssertNil(found, "An unregistered testID must return nil")
   }
 
-  // 同じ ID で再登録すると新しいインスタンスで上書きされる
+  // Re-registering the same ID must overwrite with the new instance
   func testReregisterOverwrites() async throws {
     let registry = TestableRegistry()
     let id = "test.registry.overwrite"
@@ -54,11 +54,11 @@ final class TestableRegistryTests: XCTestCase {
     await registry.register(second)
     let found = await registry.find(id: id)
 
-    XCTAssertNotNil(found, "再登録後も find で取得できる")
-    XCTAssertTrue(found === second, "再登録で新しいインスタンスに上書きされる")
+    XCTAssertNotNil(found, "find must succeed after re-registration")
+    XCTAssertTrue(found === second, "Re-registration must overwrite with the new instance")
   }
 
-  // describedState が取得できる（AnyTestable 契約の基本確認）
+  // describedState must be retrievable (basic AnyTestable contract)
   func testDescribedState() async throws {
     let registry = TestableRegistry()
     let id = "test.registry.state"
@@ -67,10 +67,10 @@ final class TestableRegistryTests: XCTestCase {
     await registry.register(mock)
     let found = await registry.find(id: id)
 
-    XCTAssertEqual(found?.describedState["stub"], .bool(true), "describedState が期待値どおり")
+    XCTAssertEqual(found?.describedState["stub"], .bool(true), "describedState must match the expected value")
   }
 
-  // シングルトン廃止の実証: 複数インスタンスが互いに隔離されている
+  // Proof that the singleton is removed: multiple instances must be isolated from each other
   func testMultipleInstancesAreIsolated() async throws {
     let registryA = TestableRegistry()
     let registryB = TestableRegistry()
@@ -82,7 +82,7 @@ final class TestableRegistryTests: XCTestCase {
     let foundInA = await registryA.find(id: id)
     let foundInB = await registryB.find(id: id)
 
-    XCTAssertNotNil(foundInA, "registryA に登録した testable は registryA で取得できる")
-    XCTAssertNil(foundInB, "registryA に登録した testable は registryB からは取得できない（インスタンス隔離）")
+    XCTAssertNotNil(foundInA, "A testable registered in registryA must be retrievable from registryA")
+    XCTAssertNil(foundInB, "A testable registered in registryA must not be retrievable from registryB (instance isolation)")
   }
 }

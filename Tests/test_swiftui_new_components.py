@@ -1,15 +1,15 @@
 """
-新規コンポーネント（TextInput / OnOffSwitch / RangeSlider）の IPC 統合テスト (pytest)
+IPC integration tests for new components (TextInput / OnOffSwitch / RangeSlider) (pytest).
 
-テスト対象:
-  - POST /perform: getState / 各コマンド
-  testID:
+Tests:
+  - POST /perform: getState / component-specific commands
+  testIDs:
     - "scene.demo.textInput"
     - "scene.demo.onOffSwitch"
     - "scene.demo.rangeSlider"
 
-前提: DemoApp が iOS Simulator 上で起動済みで、
-      localhost:8888 で TestableServer がリッスンしている。
+Prerequisite: DemoApp must be running on iOS Simulator with
+              TestableServer listening on localhost:8888.
 """
 
 import pytest
@@ -20,10 +20,10 @@ ON_OFF_SWITCH_TEST_ID = "scene.demo.onOffSwitch"
 RANGE_SLIDER_TEST_ID = "scene.demo.rangeSlider"
 
 
-# ========== ヘルパー ==========
+# ========== Helpers ==========
 
 def assert_text_input_state(state: dict):
-    """TextInput の describedState が期待するキーを満たすことを検証する"""
+    """Verify that TextInput describedState contains the expected keys."""
     expected_keys = {"text", "placeholder", "isEnabled"}
     assert set(state.keys()) == expected_keys, (
         f"TextInput: Expected keys {expected_keys}, got {set(state.keys())}"
@@ -31,7 +31,7 @@ def assert_text_input_state(state: dict):
 
 
 def assert_on_off_switch_state(state: dict):
-    """OnOffSwitch の describedState が期待するキーを満たすことを検証する"""
+    """Verify that OnOffSwitch describedState contains the expected keys."""
     expected_keys = {"isOn", "label", "isEnabled"}
     assert set(state.keys()) == expected_keys, (
         f"OnOffSwitch: Expected keys {expected_keys}, got {set(state.keys())}"
@@ -39,7 +39,7 @@ def assert_on_off_switch_state(state: dict):
 
 
 def assert_range_slider_state(state: dict):
-    """RangeSlider の describedState が期待するキーを満たすことを検証する"""
+    """Verify that RangeSlider describedState contains the expected keys."""
     expected_keys = {"value", "minValue", "maxValue", "step"}
     assert set(state.keys()) == expected_keys, (
         f"RangeSlider: Expected keys {expected_keys}, got {set(state.keys())}"
@@ -50,7 +50,7 @@ def assert_range_slider_state(state: dict):
 
 @pytest.fixture
 def text_input_perform(base_url):
-    """TextInput コンポーネント向け POST /perform ヘルパー"""
+    """POST /perform helper for the TextInput component."""
     def _perform(command_name, parameters=None):
         payload = {
             "testID": TEXT_INPUT_TEST_ID,
@@ -71,7 +71,7 @@ def text_input_perform(base_url):
 
 @pytest.fixture
 def on_off_switch_perform(base_url):
-    """OnOffSwitch コンポーネント向け POST /perform ヘルパー"""
+    """POST /perform helper for the OnOffSwitch component."""
     def _perform(command_name, parameters=None):
         payload = {
             "testID": ON_OFF_SWITCH_TEST_ID,
@@ -92,7 +92,7 @@ def on_off_switch_perform(base_url):
 
 @pytest.fixture
 def range_slider_perform(base_url):
-    """RangeSlider コンポーネント向け POST /perform ヘルパー"""
+    """POST /perform helper for the RangeSlider component."""
     def _perform(command_name, parameters=None):
         payload = {
             "testID": RANGE_SLIDER_TEST_ID,
@@ -111,90 +111,90 @@ def range_slider_perform(base_url):
     return _perform
 
 
-# ========== TextInput テスト ==========
+# ========== TextInput Tests ==========
 
 class TestTextInput:
-    """TextInput コンポーネントの IPC テスト"""
+    """IPC tests for the TextInput component."""
 
     def test_text_input_get_state(self, text_input_perform):
-        """testID="scene.demo.textInput" の getState が応答する"""
+        """getState for testID="scene.demo.textInput" responds correctly."""
         state = text_input_perform("getState")
         assert_text_input_state(state)
-        # 初期値確認
+        # Verify initial value types
         assert isinstance(state.get("text"), str)
         assert isinstance(state.get("placeholder"), str)
         assert isinstance(state.get("isEnabled"), bool)
 
     def test_text_input_clear(self, text_input_perform):
-        """TextInput.clear コマンドが実行できる"""
-        # 初期状態を取得
+        """TextInput.clear command can be executed."""
+        # Get initial state
         initial_state = text_input_perform("getState")
         assert_text_input_state(initial_state)
 
-        # clear を実行
+        # Execute clear
         cleared_state = text_input_perform("clear")
         assert_text_input_state(cleared_state)
-        # 確認: text が空になっている
+        # Verify: text is empty
         assert cleared_state.get("text") == "", (
             f"Expected text to be cleared, got: {cleared_state.get('text')}"
         )
 
 
-# ========== OnOffSwitch テスト ==========
+# ========== OnOffSwitch Tests ==========
 
 class TestOnOffSwitch:
-    """OnOffSwitch コンポーネントの IPC テスト"""
+    """IPC tests for the OnOffSwitch component."""
 
     def test_on_off_switch_get_state(self, on_off_switch_perform):
-        """testID="scene.demo.onOffSwitch" の getState が応答する"""
+        """getState for testID="scene.demo.onOffSwitch" responds correctly."""
         state = on_off_switch_perform("getState")
         assert_on_off_switch_state(state)
-        # 初期値確認
+        # Verify initial value types
         assert isinstance(state.get("isOn"), bool)
         assert isinstance(state.get("label"), str)
         assert isinstance(state.get("isEnabled"), bool)
 
     def test_on_off_switch_toggle(self, on_off_switch_perform):
-        """OnOffSwitch.toggle コマンドが実行できる"""
-        # 初期状態を取得
+        """OnOffSwitch.toggle command can be executed."""
+        # Get initial state
         initial_state = on_off_switch_perform("getState")
         assert_on_off_switch_state(initial_state)
         initial_value = initial_state.get("isOn")
 
-        # toggle を実行
+        # Execute toggle
         toggled_state = on_off_switch_perform("toggle")
         assert_on_off_switch_state(toggled_state)
-        # 確認: isOn が反転している
+        # Verify: isOn is flipped
         assert toggled_state.get("isOn") != initial_value, (
             f"Expected isOn to toggle, got same value: {toggled_state.get('isOn')}"
         )
 
 
-# ========== RangeSlider テスト ==========
+# ========== RangeSlider Tests ==========
 
 class TestRangeSlider:
-    """RangeSlider コンポーネントの IPC テスト"""
+    """IPC tests for the RangeSlider component."""
 
     def test_range_slider_get_state(self, range_slider_perform):
-        """testID="scene.demo.rangeSlider" の getState が応答する"""
+        """getState for testID="scene.demo.rangeSlider" responds correctly."""
         state = range_slider_perform("getState")
         assert_range_slider_state(state)
-        # 初期値確認
+        # Verify initial value types
         assert isinstance(state.get("value"), (int, float))
         assert isinstance(state.get("minValue"), (int, float))
         assert isinstance(state.get("maxValue"), (int, float))
 
     def test_range_slider_reset(self, range_slider_perform):
-        """RangeSlider.reset コマンドが実行できる"""
-        # 初期状態を取得
+        """RangeSlider.reset command can be executed."""
+        # Get initial state
         initial_state = range_slider_perform("getState")
         assert_range_slider_state(initial_state)
         initial_value = initial_state.get("value")
 
-        # reset を実行
+        # Execute reset
         reset_state = range_slider_perform("reset")
         assert_range_slider_state(reset_state)
-        # 確認: value が中央値（(maxValue - minValue)/2 + minValue）にリセットされている
+        # Verify: value is reset to midpoint ((maxValue - minValue)/2 + minValue)
         expected_reset_value = (reset_state.get("maxValue") - reset_state.get("minValue")) / 2 + reset_state.get("minValue")
         assert reset_state.get("value") == expected_reset_value, (
             f"Expected value to reset to midpoint {expected_reset_value}, got: {reset_state.get('value')}"
