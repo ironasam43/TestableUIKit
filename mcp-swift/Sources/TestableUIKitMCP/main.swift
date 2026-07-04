@@ -313,8 +313,47 @@ await server.withMethodHandler(ListTools.self) { _ in
         "properties": .object([
           "scenario": .object([
             "type": .string("object"),
-            "description": .string(
-              "{ name: string, steps: [{ action, testID, parameters?, expect? }] } 形式のシナリオ"),
+            "description": .string("シナリオ定義オブジェクト"),
+            "properties": .object([
+              "name": .object([
+                "type": .string("string"),
+                "description": .string("シナリオ名"),
+              ]),
+              "steps": .object([
+                "type": .string("array"),
+                "description": .string("実行ステップの配列"),
+                "items": .object([
+                  "type": .string("object"),
+                  "properties": .object([
+                    "action": .object([
+                      "type": .string("string"),
+                      "enum": .array(ScenarioAction.known.map { .string($0) }),
+                      "description": .string(
+                        "実行コマンド: getState / setProperty（ユニバーサル） "
+                        + "| tap / increment / decrement / reset / toggle / clear / setEnabled（コンポーネント固有）"),
+                    ]),
+                    "testID": .object([
+                      "type": .string("string"),
+                      "description": .string("対象コンポーネントの testID"),
+                    ]),
+                    "parameters": .object([
+                      "type": .string("object"),
+                      "description": .string(
+                        "コマンドパラメータ（省略可）。setProperty は { \"key\": string, \"value\": any } 形式"),
+                    ]),
+                    "expect": .object([
+                      "type": .string("object"),
+                      "description": .string(
+                        "実行後の assert キー・期待値（省略可）。"
+                        + "固定キー: isEnabled / title / isHidden / alpha / backgroundColor "
+                        + "| コンポーネント固有: count / isOn / label / value / text など"),
+                    ]),
+                  ]),
+                  "required": .array([.string("action"), .string("testID")]),
+                ]),
+              ]),
+            ]),
+            "required": .array([.string("name"), .string("steps")]),
           ])
         ]),
         "required": .array([.string("scenario")]),

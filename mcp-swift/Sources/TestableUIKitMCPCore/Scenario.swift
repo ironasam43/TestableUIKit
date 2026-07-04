@@ -86,6 +86,32 @@ extension JSONValue {
 }
 
 // ================================================================
+// ScenarioAction — 既知コマンドの定数化
+// ================================================================
+
+/// ui_runScenario で実行可能な既知コマンド一覧。
+/// 各値は `/perform` エンドポイントの commandName にそのまま渡される。
+public enum ScenarioAction {
+  /// ユニバーサルコマンド（すべてのテスト対象に有効）
+  public static let getState = "getState"
+  public static let setProperty = "setProperty"
+
+  /// コンポーネント固有コマンド
+  public static let tap = "tap"
+  public static let increment = "increment"
+  public static let decrement = "decrement"
+  public static let reset = "reset"
+  public static let toggle = "toggle"
+  public static let clear = "clear"
+  public static let setEnabled = "setEnabled"
+
+  /// 全既知コマンドの配列（schema 定義・テスト用）。
+  public static let known = [
+    getState, setProperty, tap, increment, decrement, reset, toggle, clear, setEnabled,
+  ]
+}
+
+// ================================================================
 // シナリオモデル（Codable）
 // ================================================================
 

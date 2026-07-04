@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/ironasam43/TestableUIKit/raw/main/Example/scenarios/scenario.schema.json",
+  "title": "TestableUIKit シナリオスキーマ",
+  "description": "宣言的 UI シナリオ（複数ステップの action/testID/parameters/expect 列）の仕様",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "シナリオ名（例: counter-flow, login-flow）"
+    },
+    "steps": {
+      "type": "array",
+      "description": "実行ステップの配列。先頭から順に実行される",
+      "items": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "getState",
+              "setProperty",
+              "tap",
+              "increment",
+              "decrement",
+              "reset",
+              "toggle",
+              "clear",
+              "setEnabled"
+            ],
+            "description": "実行コマンド。ユニバーサル: getState / setProperty | コンポーネント固有: tap / increment / decrement / reset / toggle / clear / setEnabled"
+          },
+          "testID": {
+            "type": "string",
+            "description": "対象コンポーネントの testID（例: scene.demo.counter, scene.auth.loginButton）"
+          },
+          "parameters": {
+            "type": "object",
+            "description": "コマンドパラメータ（省略可）。setProperty の場合は { \"key\": string, \"value\": any } 形式必須。その他コマンドでは通常省略"
+          },
+          "expect": {
+            "type": "object",
+            "description": "実行後の assert キー・期待値（省略可）。固定5キー（isEnabled / title / isHidden / alpha / backgroundColor）とコンポーネント固有キー（count / isOn / label / value / text など）の両方を許容",
+            "additionalProperties": true
+          }
+        },
+        "required": ["action", "testID"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["name", "steps"],
+  "additionalProperties": false
+}

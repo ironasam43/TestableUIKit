@@ -33,7 +33,7 @@ AI エージェントが `ui_getState` で現在の状態を取得 → 自ら判
 }
 ```
 
-動作するサンプルは [`Example/scenarios/`](Example/scenarios/) を参照してください。
+動作するサンプルは [`Example/scenarios/`](Example/scenarios/) を参照。シナリオ JSON の書き方やアクションカタログ詳細は [`docs/scenario-authoring.md`](docs/scenario-authoring.md) を参照してください。
 
 ### MCP ツール一覧（5 本）
 

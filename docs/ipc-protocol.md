@@ -292,6 +292,139 @@ case "setEnabled":
 
 ---
 
+## Component-Specific Commands
+
+以下のコマンドはコンポーネント固有の操作を実行します。実装は各コンポーネント側（Counter / OnOffSwitch など）で定義されます。
+
+### increment
+
+**目的**: 数値カウンターを増加させる（Counter など）  
+**パラメータ**: なし  
+**前提**: コンポーネントが `isEnabled == true` の場合のみ動作。無効時は no-op
+
+**Response schema**:
+```json
+{
+  "count": <number>,
+  // その他、コンポーネントが提供する descriptedState キー
+  "isEnabled": <bool>,
+  ...
+}
+```
+
+**実装例** (Counter):
+```swift
+case "increment":
+  var state = _state
+  if state.isEnabled { state.count += 1 }
+  _state = state
+  return describedState
+```
+
+---
+
+### decrement
+
+**目的**: 数値カウンターを減少させる（Counter など）  
+**パラメータ**: なし  
+**前提**: コンポーネントが `isEnabled == true` の場合のみ動作。無効時は no-op
+
+**Response schema**:
+```json
+{
+  "count": <number>,
+  // その他、コンポーネントが提供する descriptedState キー
+  "isEnabled": <bool>,
+  ...
+}
+```
+
+**実装例** (Counter):
+```swift
+case "decrement":
+  var state = _state
+  if state.isEnabled { state.count -= 1 }
+  _state = state
+  return describedState
+```
+
+---
+
+### reset
+
+**目的**: コンポーネントを初期状態にリセットする（Counter, Slider など）  
+**パラメータ**: なし
+
+**Response schema**:
+```json
+{
+  "count": 0,  // or 初期値
+  "isEnabled": <bool>,
+  ...
+}
+```
+
+**実装例** (Counter):
+```swift
+case "reset":
+  var state = _state
+  state.count = 0
+  _state = state
+  return describedState
+```
+
+---
+
+### toggle
+
+**目的**: On/Off スイッチの状態を反転する（OnOffSwitch など）  
+**パラメータ**: なし
+
+**Response schema**:
+```json
+{
+  "isOn": <bool>,
+  "isEnabled": <bool>,
+  ...
+}
+```
+
+**実装例** (OnOffSwitch):
+```swift
+case "toggle":
+  var state = _state
+  state.isOn.toggle()
+  _state = state
+  return describedState
+```
+
+---
+
+### clear
+
+**目的**: テキスト入力フィールドなどをクリアする（TextInput など）  
+**パラメータ**: なし
+
+**Response schema**:
+```json
+{
+  "text": "",
+  "isEnabled": <bool>,
+  ...
+}
+```
+
+**実装例** (TextInput):
+```swift
+case "clear":
+  var state = _state
+  state.text = ""
+  _state = state
+  return describedState
+```
+
+---
+
 ## Wire Format (JSON Coding)
 
 すべての値は `JSONValue` enum に統合：

@@ -215,3 +215,46 @@ final class JSONValueCodableTests: XCTestCase {
     XCTAssertEqual(decoded.objectValue?["title"], .string("Log In"))
   }
 }
+
+// ================================================================
+// ScenarioAction（既知コマンド定数）
+// ================================================================
+
+final class ScenarioActionTests: XCTestCase {
+  func test_knownActionsContainsExpectedValues() {
+    // ユニバーサルコマンド
+    XCTAssertTrue(ScenarioAction.known.contains(ScenarioAction.getState))
+    XCTAssertTrue(ScenarioAction.known.contains(ScenarioAction.setProperty))
+
+    // コンポーネント固有コマンド
+    XCTAssertTrue(ScenarioAction.known.contains(ScenarioAction.tap))
+    XCTAssertTrue(ScenarioAction.known.contains(ScenarioAction.increment))
+    XCTAssertTrue(ScenarioAction.known.contains(ScenarioAction.decrement))
+    XCTAssertTrue(ScenarioAction.known.contains(ScenarioAction.reset))
+    XCTAssertTrue(ScenarioAction.known.contains(ScenarioAction.toggle))
+    XCTAssertTrue(ScenarioAction.known.contains(ScenarioAction.clear))
+    XCTAssertTrue(ScenarioAction.known.contains(ScenarioAction.setEnabled))
+  }
+
+  func test_knownActionsAreUnique() {
+    let unique = Set(ScenarioAction.known)
+    XCTAssertEqual(unique.count, ScenarioAction.known.count, "ScenarioAction.known に重複があります")
+  }
+
+  func test_knownActionsHaveCorrectValues() {
+    XCTAssertEqual(ScenarioAction.getState, "getState")
+    XCTAssertEqual(ScenarioAction.setProperty, "setProperty")
+    XCTAssertEqual(ScenarioAction.tap, "tap")
+    XCTAssertEqual(ScenarioAction.increment, "increment")
+    XCTAssertEqual(ScenarioAction.decrement, "decrement")
+    XCTAssertEqual(ScenarioAction.reset, "reset")
+    XCTAssertEqual(ScenarioAction.toggle, "toggle")
+    XCTAssertEqual(ScenarioAction.clear, "clear")
+    XCTAssertEqual(ScenarioAction.setEnabled, "setEnabled")
+  }
+
+  func test_knownActionsCountMatchesExpectation() {
+    // 9 つのコマンドが定義されていることを確認
+    XCTAssertEqual(ScenarioAction.known.count, 9)
+  }
+}

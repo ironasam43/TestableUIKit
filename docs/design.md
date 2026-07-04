@@ -487,6 +487,13 @@ mcp-swift/
 - **AI 動的シナリオ**（`ui_getState`→判断→`ui_perform`→`ui_screenshot`）: AI が都度 describedState を見て次の一手を判断する探索的な駆動。
 - **`ui_runScenario` 宣言的シナリオ**: 期待される操作列・期待値があらかじめ分かっている回帰確認を JSON 1 本で定義し、AI の都度判断を介さず決定的に実行・判定する。Example は `Example/scenarios/*.json` を参照。
 
+**⚠️ action enum 同期に関する注記**: 宣言的シナリオで実行可能なコマンド（action）の列挙は `mcp-swift/Sources/TestableUIKitMCPCore/Scenario.swift` 内の `ScenarioAction` enum および `ScenarioAction.known` 配列が正本です。新たなコマンド（tap / increment など）を実装した際は、必ず以下の箇所を同期更新してください:
+- `ScenarioAction` の定数追加（例: `setEnabled = "setEnabled"`）
+- `ScenarioAction.known` 配列への追加
+- `Example/scenarios/scenario.schema.json` の `enum` リスト更新（AI が valid なアクションを認識するため）
+- `docs/ipc-protocol.md` の「Standard Commands」または「Component-Specific Commands」セクション更新（仕様文書）
+- `docs/scenario-authoring.md` の「action カタログ」更新（ユーザードキュメント）
+
 #### 起動方法
 
 ```bash
