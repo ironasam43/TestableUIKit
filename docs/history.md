@@ -134,3 +134,9 @@
 - **README.md 公開化**: タイトルを「垂直スライス実装」から中立化。冒頭に「AI エージェントによる自動操作（MCP）」節を新設し、①AI 動的シナリオ（getState→判断→perform→screenshot の探索的連鎖）②`ui_runScenario` 宣言的シナリオ、の両輪＋ツール一覧＋起動方法を訴求。絶対パス（`/Users/koba-p/...`）2箇所を相対表記へ、内部運用文言（「内部開発向け」「Auditor に報告」）を公開向け表現（ライセンス検討中の明記／GitHub Issues 誘導）へ書き換え。
 - **検証**: `swift build` 成功／`swift test` **61 PASS（0 failure）**／stdio handshake で `initialize`→`tools/list` を実行し5ツール（ui_ping/ui_getState/ui_perform/ui_screenshot/ui_runScenario）の登録を実測確認。
 - **残**: `ui_runScenario` を実起動中 DemoApp/MacDemo に対して実際に流すライブ e2e は実アプリ稼働が前提のため VQ へ送る（既存の Swift 版 MCP live パリティ VQ と同性質）。制御構文（分岐・リトライ・待機）は現スコープ外（線形ステップ列のみ）。
+
+## 2026-07-04 GitHub OSS 公開整備ロードマップ文書作成
+- **概要**: GitHub リポジトリ公開整備のための洗い出し・計画文書を作成（施策実施は後続セッション）。
+- **新規 `docs/oss-publication-roadmap.md`**: 現状インベントリ（visibility: PUBLIC / LICENSE なし / semver タグ v0.1.0・v0.2.0 / GitHub topics 未設定 / 内部運用ファイル10件露出 / 日本語コンテンツ）をまとめ、P0〜P3 の4フェーズで優先順位付き施策を記述。Human 判断が必要な4点（①LICENSE 種別・②履歴 rewrite 要否・③英語化方針・④著者名義）を「Human 判断まとめ」として明示区分。
+- **`docs/roadmap.md` 参考資料セクション**: `oss-publication-roadmap.md` への参照リンクを1行追記（既存 STEP 構成は改変なし）。
+- **commit**: `6da6c0b`（`docs:` プレフィックス）。ビルド/テスト不要（ドキュメントのみ）。VQ 起票不要（Human 決定4点はロードマップ内の「要判断」欄で管理）。
