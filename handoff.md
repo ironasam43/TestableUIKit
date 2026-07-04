@@ -75,6 +75,7 @@
 5. ✅ **screenshot 経路の整理** （2026-06-23）: 実機=`GET /screenshot`・Simulator=simctl フォールバック・整備完了
 
 ## 🔄 積み残し
+- **シナリオ・オーサリング支援（設計メモ保存・未着手）**: AI が `ui_runScenario` のシナリオを書けるよう、① MCP tool schema 拡充（action の enum 化・expect キー/parameters 明記）② JSON Schema ファイル ③ オーサリング doc の3点を検討。スコープ案A（フル）/B（機械可読のみ）/C（doc のみ）は次セッションで Human に確認。設計・再開手順は `docs/scenario-authoring-plan.md` に保存済み。
 - **macOS e2e push 待ち**: 今セッションのコミット（macOS デモ e2e 実証）は未 push。Human の明示指示で push。
 - **VQ 新規起票 2 件（今セッション）**: ①screenshot 視覚的正しさ（5コンポーネントのレイアウト崩れ有無）②macOS ボタン GUI クリック→perform 配線の体感確認（`e2e_macdemo.sh` は curl 駆動のため GUI クリック経路は非テスト）。
 - **課題A 検収待ち**: inbox `inbox/done/2026-06-25-issue-a-state-declarative-api.md`・`sendNote(done)` 送付済み。HQ が API 形・②削減効果を裏取りして accepted/rejected を返す。accepted で done/ 自動削除。
