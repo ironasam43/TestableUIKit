@@ -25,5 +25,7 @@
     └ 詳細: protocol-level（stdio handshake・tools/list・tools/call の graceful fail）と Core 純関数 41 XCTest は機械検証済み。残るは起動中 DemoApp への実 HTTP 中継成功パス。合格後 Python 版 `mcp_server/` 廃止条件①を満たす。
 - [ ] **ui_runScenario 37e835d** ｜操作: 実機/Simulator で起動した DemoApp に対し `swift run TestableUIKitMCP` の `ui_runScenario` へ `Example/scenarios/counter-flow.json` を渡して実行 ｜着眼: 各ステップの pass/fail ｜合格: 5 ステップ全て `passed: true`（`passCount=5, failCount=0`）
     └ 詳細: パース・assert 評価（`ScenarioEvaluator`）は L1 XCTest 20件で機械検証済み。DemoApp 未起動時の graceful fail（HTTP 接続失敗でもシナリオ中断せず5ステップ完走・fail 記録）は stdio 経由で実測確認済み。残るは起動中 DemoApp への実 HTTP 中継が pass する成功パスのみ。
+- [ ] **シナリオ・オーサリング支援（21943ef）** ｜操作: scenario.schema.json・docs/scenario-authoring.md が存在し、AI が MCP 接続時に `ui_runScenario` のスキーマおよびオーサリングドキュメントを参照できる状態で、テスト用シナリオ（Example/scenarios/*.json 以外の独自シナリオ）を JSON で作成 ｜着眼: 作成されたシナリオが schema に valid か ｜合格: `ajv` など JSON Schema validator で scenario.schema.json に照合し validate: true（enum 値・require キー・parameters 形式が schema 仕様に合致）
+    └ 詳細: schema enum・MCP inputSchema・L1 テスト（ScenarioActionTests）は機械検証済み（swift test 117 PASS）。残るは AI がドキュメントとスキーマを活用して「勘ではなく仕様準拠」にシナリオを記述できるかの体感・実用検証。JSON validator で形式チェック後、実アプリ稼働時に実際の e2e 成功パスは同一 VQ へ統合確認可。
 
 ## 機械検証済み・消し込み

@@ -2,6 +2,23 @@
 
 > 新規作成（2026-06-02）。これまでの作業は handoff_1.md より要約。
 
+## 2026-07-04 シナリオ・オーサリング支援（スコープA）実装
+- **目的**: MCP `ui_runScenario` ツールを AI で使いやすくするための整備。action 列挙化・schema 拡充・ドキュメント化・L1 テスト化。
+- **ScenarioAction.known 定数化** (`mcp-swift/Sources/TestableUIKitMCPCore/Scenario.swift`):
+  - `getState` / `setProperty`（ユニバーサル）+ `tap` / `increment` / `decrement` / `reset` / `toggle` / `clear` / `setEnabled`（コンポーネント固有）= 9 コマンドを定数化。
+  - L1 テスト: `ScenarioActionTests`（値確認・重複チェック・カウント検証）。
+- **MCP inputSchema 拡充** (`main.swift`): `ui_runScenario` のスキーマに action enum・expect キー説明・parameters 形を明記。
+- **JSON Schema + サンプル更新**:
+  - `Example/scenarios/scenario.schema.json` 新規（draft-07）。
+  - `counter-flow.json` / `login-flow.json` に `$schema` 参照付与。
+- **ドキュメント整備**:
+  - `docs/scenario-authoring.md` 新規：action カタログ・expect キーカタログ・完全例・落とし穴を網羅。
+  - `docs/ipc-protocol.md` に「Component-Specific Commands」セクション追加（increment/decrement/reset/toggle/clear）。
+  - `docs/design.md` §E2 に action enum 同期注記追加（コマンド追加時の同期対象を明示）。
+  - `README.md` MCP 訴求節に `scenario-authoring.md` リンク追加。
+- **DoD**: swift build ✅ / swift test ✅ 117 PASS（新テスト含む）/ stdio handshake ✅（5 ツール登録確認）。commit `21943ef`。
+- **積み残し（VQ 起票）**: 「AI が scenario JSON を書く際の使いやすさ（勘ではなく仕様準拠）」の体感検証は AI クライアント稼働時の実用で確認（機械検証不能・実アプリ起動必須）→ VQ へ1行起票。
+
 ## 2026-06-26 課題A — state 宣言型 高レベル API（Tier1 TestableComponent / Tier2 drop-in 5種）
 - inbox `2026-06-25-issue-a-state-declarative-api.md`（HQ 発・消化モード: フロー）を消化。計装コストの線形増加（②AnyTestable 手書き switch ボイラープレート）を畳む 2 Tier の高レベル public API を追加。既存 `AnyTestable` 手書き経路は温存（後方互換・回帰なし）。
 - **Tier 1 `Sources/TestableUIKit/TestableComponent.swift`（新規）**: `TestableProperty<State>`（get/set ペア＋`.bool/.int/.double/.string` の WritableKeyPath 便宜コンストラクタ）／共有 `runTestablePerform`（getState→describe・setProperty→properties 経由・commands 表・else unknownCommand throw）／`mirrorDescribe`（describe 省略時に state の Bool/Int/Double/String stored property を Mirror で自動 describe・自前値型限定で private SwiftUI 型に非接触）／`@MainActor public final class TestableComponent<State>: ObservableObject, AnyTestable`。これで②手書き switch が消滅。
