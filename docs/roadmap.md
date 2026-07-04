@@ -177,3 +177,4 @@ STEP 4（実機対応）✅ 先行完走（当初は「後回し可」）
 - `docs/history.md` — マイルストーン M-1〜M-5 の進捗サマリー
 - `docs/ipc-protocol.md` — HTTP API 仕様（STEP 1 で拡張予定）
 - `handoff.md` — プロジェクト作業メモ
+- `docs/oss-publication-roadmap.md` — GitHub OSS 公開整備ロードマップ（LICENSE・内部ファイル非追跡化・英語化・OSS 標準整備）
