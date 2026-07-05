@@ -10,6 +10,11 @@ A self-reporting UI component testing framework for iOS/macOS.
 
 **What makes it unique:** A component self-reporting testing framework that fuses the Swift type system with AI (MCP: Model Context Protocol). UI components self-report their `testID`, state, and executable commands, enabling AI agents to directly drive and verify a running UI via MCP.
 
+<p align="center">
+  <img src="docs/assets/demo.gif" width="480" alt="An AI agent driving the macOS demo app over HTTP: incrementing a counter, toggling a switch, typing text, moving a slider, and tapping the login button — with no human interaction.">
+</p>
+<p align="center"><em>Every interaction above is performed by an AI agent over HTTP — no human hands involved.</em></p>
+
 > 🚀 **New here?** For a step-by-step guide to instrumenting your own component in 5 minutes, see
 > [`docs/getting-started.md`](docs/getting-started.md).
 > The minimal working sample is in [`Example/`](Example/README.md), and common issues are covered in

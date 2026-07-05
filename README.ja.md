@@ -10,6 +10,11 @@ iOS/macOS 向けの UIコンポーネント自己申告型テストフレーム�
 
 **差別化：** Swift 型システムと AI（MCP: Model Context Protocol）が融合した、コンポーネント自己申告型テストフレームワーク。UI コンポーネントが `testID`・状態・実行可能コマンドを自己申告し、AI エージェントが MCP 経由で実行中の UI を直接操作・検証できる。
 
+<p align="center">
+  <img src="docs/assets/demo.gif" width="480" alt="AI エージェントが HTTP 経由で macOS デモアプリを操作する様子：カウンター加算・スイッチ切替・テキスト入力・スライダー移動・ログインボタンのタップ — すべて人手なし。">
+</p>
+<p align="center"><em>上の操作はすべて AI エージェントが HTTP 経由で実行しています — 人間は一切触れていません。</em></p>
+
 > 🚀 **はじめての方へ**: 自作コンポーネントを 5 分で計装する手順は
 > [`docs/getting-started.md`](docs/getting-started.md) を参照してください。
 > 最小の動くサンプルは [`Example/`](Example/README.md)、困ったときは
