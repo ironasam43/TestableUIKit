@@ -299,7 +299,7 @@ TESTABLE_IPC_HOST=<device-IP> python3 run_test.py
 TESTABLE_IPC_HOST=192.168.0.181 python3 run_test.py
 ```
 
-For details (how to find the IP, firewall settings, troubleshooting), see **[SETUP.md Step 7](./SETUP.md#ステップ-7実機lan-越しでの実行)**.
+For details (how to find the IP, firewall settings, troubleshooting), see **[SETUP.md Step 7](./SETUP.md#step-7-running-on-a-physical-device-lan)**.
 
 ---
 

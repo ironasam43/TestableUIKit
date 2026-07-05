@@ -496,7 +496,7 @@ swift run TestableUIKitMCP
 #### Verification Status
 
 - **Machine-verified**: Core pure function XCTest 41 green. MCP stdio handshake demonstrated (`initialize` → `tools/list` confirms 4 tools registered; `tools/call ui_ping` gracefully fails with `isError` when app is not running).
-- **VQ/review lane**: The success path for live app responses (4-tool live drive parity against a running DemoApp) requires a real device/Simulator and is deferred to verify-queue.
+- **VQ/review lane**: The success path for live app responses (4-tool live drive parity against a running DemoApp) requires a real device/Simulator and is deferred to an internal verification queue (not included in this repository).
 
 #### Python version (`mcp_server/`) retirement conditions
 
@@ -553,7 +553,7 @@ The pure code changes required for LAN-based IPC support have been implemented a
 - Python: `TestResolveIpcHostPort` in `Tests/unit/test_mcp_helpers.py` (13 tests)
 - DoD: `swift test` 96 PASS / pytest unit 42 PASS / commit `7d81160`
 
-**Remaining (deferred to VQ)**: Verify real Wi-Fi communication from a physical iPhone after pairing → see `docs/verify-queue.md`
+**Remaining (deferred to VQ)**: Verify real Wi-Fi communication from a physical iPhone after pairing (internal document, not included in this repository)
 
 ---
 
@@ -579,7 +579,7 @@ The pure code changes required for LAN-based IPC support have been implemented a
 - Python: `build_screenshot_url`, fallback detection, passthrough (17 tests added)
 - DoD: `swift test` 100 PASS / pytest 59 PASS / commit `78716fd`
 
-**Remaining (deferred to VQ)**: After reinstalling DemoApp on a real device (iPhone `192.168.0.181`), verify that calling `ui_screenshot` with `TESTABLE_IPC_HOST=192.168.0.181` returns a real PNG base64 → see `docs/verify-queue.md`
+**Remaining (deferred to VQ)**: After reinstalling DemoApp on a real device (iPhone `192.168.0.181`), verify that calling `ui_screenshot` with `TESTABLE_IPC_HOST=192.168.0.181` returns a real PNG base64 (internal document, not included in this repository)
 
 ---
 
