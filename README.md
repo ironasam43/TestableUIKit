@@ -1,5 +1,9 @@
 English | [日本語](README.ja.md)
 
+[![CI](https://github.com/ironasam43/TestableUIKit/actions/workflows/ci.yml/badge.svg)](https://github.com/ironasam43/TestableUIKit/actions/workflows/ci.yml)
+[![Swift 5.9+](https://img.shields.io/badge/Swift-5.9%2B-orange.svg?logo=swift)](https://swift.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
+
 # TestableUIKit
 
 A self-reporting UI component testing framework for iOS/macOS.
